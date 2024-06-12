@@ -22,10 +22,23 @@
 #' 
 #' 
 
-file_name <- "df_bcra.rds"
+#' #  Executive summary {-}
+
+
+#' 
+#' 
+#' - to be completed..
+#' - 
+#'  
+#' 
+
+
 
 # ---------------------------------------------------
-#' # Run Info {-}\n
+#' # Run Info {-}
+#' 
+#' 
+file_name <- "df_bcra.rds"
 
 #' 
 #' This report was run with the **objetive** of describing the bcra dataset: \n
@@ -34,16 +47,6 @@ file_name <- "df_bcra.rds"
 #' -  **Dataset **  :`r  file_name`  \n
 #' 
 #' 
-
-#' #  Executive summary{-}\n
-
-
-#' 
-#' - to be completed..
-#' - 
-#'  
-#' 
-
 
 
 
