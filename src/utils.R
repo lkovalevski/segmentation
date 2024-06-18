@@ -25,7 +25,9 @@ loadPackages <- function(pckgs) {
     install.packages(new.packages)
   }
   for (pckg in pckgs) {
-    suppressMessages(library(pckg, character.only = TRUE))
+    suppressMessages(suppressPackageStartupMessages(
+      library(pckg, character.only = TRUE)
+      ))
   }
 }
 
