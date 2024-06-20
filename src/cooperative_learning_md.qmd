@@ -2,16 +2,16 @@
 title: "Cooperative Learning"
 author: "Leandro Kovalevski"
 toc: true
-number-sections: true
 toc-depth: 2
 format:
   gfm:
-    code-fold: true
+    code-folding: true
     code-summary: "Show the code"
 theme:
   light: zephyr
   dark: cyborg
 ---
+
 
 
 #  Executive summary {-}

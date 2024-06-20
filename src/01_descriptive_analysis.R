@@ -4,13 +4,7 @@
 #' date: April, 2024 
 #' toctitle: "Tabla de Contenidos"
 #' output: 
-#'   bookdown::html_document2:
-#'     toc: TRUE
-#'     toc_float: true
-#'     toc_depth: 2
-#'     code_folding: hide
-#'     df_print: paged
-#'     theme: united
+#'   github_document
 #' ---
 
 

@@ -2,20 +2,14 @@
 Leandro Kovalevski
 
 - [Executive summary](#executive-summary)
-- [<span class="toc-section-number">1</span> Dataset
-  description.](#dataset-description.)
+- [Dataset description.](#dataset-description.)
 - [Settings](#settings)
-- [<span class="toc-section-number">2</span> Exploratory Data
-  Analysis](#exploratory-data-analysis)
-  - [<span class="toc-section-number">2.1</span> General descriptive
-    analysis.](#general-descriptive-analysis.)
-  - [<span class="toc-section-number">2.2</span> Response descriptive
-    analysis.](#response-descriptive-analysis.)
-  - [<span class="toc-section-number">2.3</span> Descriptive analysis of
-    categorical
+- [Exploratory Data Analysis](#exploratory-data-analysis)
+  - [General descriptive analysis.](#general-descriptive-analysis.)
+  - [Response descriptive analysis.](#response-descriptive-analysis.)
+  - [Descriptive analysis of categorical
     predictors](#descriptive-analysis-of-categorical-predictors)
-  - [<span class="toc-section-number">2.4</span> Descriptive analysis of
-    quantitative
+  - [Descriptive analysis of quantitative
     predictors](#descriptive-analysis-of-quantitative-predictors)
 
 # Executive summary
@@ -24,19 +18,14 @@ Leandro Kovalevski
 - …
 - …
 
-<details>
-<summary>Show the code</summary>
-
 ``` r
 file_name <- "df_bcra.rds"
 ```
 
-</details>
-
 This report was run with the **objetive** of describing the bcra
 dataset:
 
-- **Run date**: 2024-06-18
+- **Run date**: 2024-06-20
 
 - **Dataset**: df_bcra.rds
 
@@ -61,9 +50,6 @@ recorded with 28 variables is available. The data is anonymized and
 variable names are not displayed.
 
 # Settings
-
-<details>
-<summary>Show the code</summary>
 
 ``` r
 #' ## Load data and needed packages.
@@ -96,20 +82,13 @@ if( !exists("file_name") ){
 df <- readRDS(file.path(file_path, file_name))
 ```
 
-</details>
-
 # Exploratory Data Analysis
 
 ## General descriptive analysis.
 
-<details>
-<summary>Show the code</summary>
-
 ``` r
 skim(df)
 ```
-
-</details>
 
 |                                                  |       |
 |:-------------------------------------------------|:------|
@@ -179,21 +158,13 @@ the following values:
 - **1**: if the most severe credit situation is greater than or equal to
   3 in any debt any period.
 
-<details>
-<summary>Show the code</summary>
-
 ``` r
 response <- "response"
 
 cat(paste0("\n### Response variabe: **", response, "**.\n"))
 ```
 
-</details>
-
 ### Response variabe: **response**.
-
-<details>
-<summary>Show the code</summary>
 
 ``` r
 describeCategorical(
@@ -202,8 +173,6 @@ describeCategorical(
   bar_color    = "#fff159" 
   ) 
 ```
-
-</details>
 
 Analyzing the most frequent values of ‘response’ reveals that 21569
 (90.4%) of records have ‘response’ equal to ‘*0*’, while 9.6% have
@@ -223,27 +192,15 @@ Analyzing the most frequent values of ‘response’ reveals that 21569
 
 ![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-4-1.png)
 
-<details>
-<summary>Show the code</summary>
-
 ``` r
 cat("\n")
 ```
 
-</details>
-<details>
-<summary>Show the code</summary>
-
 ``` r
 cat("\n")
 ```
-
-</details>
 
 ## Descriptive analysis of categorical predictors
-
-<details>
-<summary>Show the code</summary>
 
 ``` r
 #' Identify categorical and quantitavie variables
@@ -263,8 +220,6 @@ for (var in cvars){
     )
 }
 ```
-
-</details>
 
 ### Variable: **col_1**.
 
@@ -407,9 +362,6 @@ next highest percentage is for: ‘*3*’, with: 40.2% (Table 1.6).
 
 ## Descriptive analysis of quantitative predictors
 
-<details>
-<summary>Show the code</summary>
-
 ``` r
 vars_to_exclude <- c( response, "id" )
 nvars              <- nvars[!nvars %in% vars_to_exclude]
@@ -426,8 +378,6 @@ for (var in nvars){
     )
 }
 ```
-
-</details>
 
 ### Variable: **col_2**.
 
