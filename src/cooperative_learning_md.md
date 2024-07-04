@@ -2,57 +2,41 @@
 Leandro Kovalevski
 
 - [Executive summary](#executive-summary)
-- [Dataset description.](#dataset-description.)
 - [Settings](#settings)
-- [Exploratory Data Analysis](#exploratory-data-analysis)
-  - [General descriptive analysis.](#general-descriptive-analysis.)
-  - [Response descriptive analysis.](#response-descriptive-analysis.)
-  - [Descriptive analysis of categorical
+- [1. Dataset description](#dataset-description)
+- [2. Exploratory Data Analysis](#exploratory-data-analysis)
+  - [2.1. General descriptive analysis](#general-descriptive-analysis)
+  - [2.2. Response descriptive analysis](#response-descriptive-analysis)
+  - [2.3. Descriptive analysis of categorical
     predictors](#descriptive-analysis-of-categorical-predictors)
-  - [Descriptive analysis of quantitative
+  - [2.4. Descriptive analysis of quantitative
     predictors](#descriptive-analysis-of-quantitative-predictors)
+  - [2.5. Matrix correlation of quantitative
+    predictors](#matrix-correlation-of-quantitative-predictors)
 
 # Executive summary
 
+- A database of a random sample of 23,857 tax identification numbers
+  (CUITs) is analyzed. Past financial behavior is used to predict
+  default. The percent of default in the dataset is 9.6%.
+- Variable distributions and associations with the response are
+  presented.
+- There is a clear (marginal) association between default and some
+  variabes (‘col_3’, ‘col_2’, ‘col_6’, ‘col_8’, ‘col_17’, ‘col_20’,
+  ‘col_21’, ‘col_22’, ‘col_2’ and ‘col_26’) )
+- …
+- …
 - to be completed..
 - …
 - …
 
-``` r
-file_name <- "df_bcra.rds"
-```
-
-This report was run with the **objetive** of describing the bcra
-dataset:
-
-- **Run date**: 2024-06-20
-
-- **Dataset**: df_bcra.rds
-
-# Dataset description.
-
-The database consists of a random sample of 23,857 tax identification
-numbers (CUITs) belonging to individuals who had at least one debt in
-the Argentine financial system in June 2019, and were in credit
-situation 1 or 2 (meaning they did not have overdue payments exceeding
-90 days), obtained from the debtor database provided by the Central Bank
-of the Argentine Republic (BCRA) for the period of June 2019. For the
-tax identification numbers in the random sample, debts in all entities
-were recorded and summarized for June 2019, as well as for the previous
-6 months. Debts of these tax identification numbers between July 2019
-and June 2020 were also recorded to assess their evolution. The response
-variable is a binary variable constructed from the most severe credit
-situation of the tax identification number (CUIT) between the periods of
-July 2019 and June 2020. The variable takes the value 1 if the most
-severe credit situation is greater than or equal to 3 in any debt any
-period, and 0 otherwise. In the dataset ‘df_bcra.rds’, the information
-recorded with 28 variables is available. The data is anonymized and
-variable names are not displayed.
-
 # Settings
 
+<details>
+<summary>Show the code</summary>
+
 ``` r
-#' ## Load data and needed packages.
+#' Load data and needed packages.
 
 #' Install (if needed)  'here' package to use relative paths. 
 if(!("here" %in% installed.packages()[, "Package"])){ 
@@ -82,13 +66,40 @@ if( !exists("file_name") ){
 df <- readRDS(file.path(file_path, file_name))
 ```
 
-# Exploratory Data Analysis
+</details>
 
-## General descriptive analysis.
+# 1. Dataset description
+
+The database consists of a random sample of 23,857 tax identification
+numbers (CUITs) belonging to individuals who had at least one debt in
+the Argentine financial system in June 2019, and were in credit
+situation 1 or 2 (meaning they did not have overdue payments exceeding
+90 days), obtained from the debtor database provided by the Central Bank
+of the Argentine Republic (BCRA) for the period of June 2019. For the
+tax identification numbers in the random sample, debts in all entities
+were recorded and summarized for June 2019, as well as for the previous
+6 months. Debts of these tax identification numbers between July 2019
+and June 2020 were also recorded to assess their evolution. The response
+variable is a binary variable constructed from the most severe credit
+situation of the tax identification number (CUIT) between the periods of
+July 2019 and June 2020. The variable takes the value 1 if the most
+severe credit situation is greater than or equal to 3 in any debt any
+period, and 0 otherwise. In the dataset ‘df_bcra.rds’, the information
+recorded with 28 variables is available. The data is anonymized and
+variable names are not displayed.
+
+# 2. Exploratory Data Analysis
+
+## 2.1. General descriptive analysis
+
+<details>
+<summary>Show the code</summary>
 
 ``` r
 skim(df)
 ```
+
+</details>
 
 |                                                  |       |
 |:-------------------------------------------------|:------|
@@ -148,7 +159,7 @@ Data summary
 | response      |         0 |             1 |     0.10 |    0.29 |   0 |    0.00 |     0.00 |     0.00 |      1.00 | ▇▁▁▁▁ |
 | id            |         0 |             1 | 11929.00 | 6887.07 |   1 | 5965.00 | 11929.00 | 17893.00 |  23857.00 | ▇▇▇▇▇ |
 
-## Response descriptive analysis.
+## 2.2. Response descriptive analysis
 
 To analyze the default, we use the variable: **‘response’**, which take
 the following values:
@@ -158,27 +169,38 @@ the following values:
 - **1**: if the most severe credit situation is greater than or equal to
   3 in any debt any period.
 
+<details>
+<summary>Show the code</summary>
+
 ``` r
 response <- "response"
 
 cat(paste0("\n### Response variabe: **", response, "**.\n"))
 ```
 
+</details>
+
 ### Response variabe: **response**.
+
+<details>
+<summary>Show the code</summary>
 
 ``` r
 describeCategorical(
   data         = df,
   var          = response,
-  bar_color    = "#fff159" 
+  bar_color    = "#fff159",
+  sec          = "2.2"
   ) 
 ```
 
+</details>
+
 Analyzing the most frequent values of ‘response’ reveals that 21569
 (90.4%) of records have ‘response’ equal to ‘*0*’, while 9.6% have
-‘response’ equal to ‘*1*’ (Table 1.1).
+‘response’ equal to ‘*1*’ (Table 2.2.1).
 
-### Table 1.1. Count and percentage of records by ‘response’.
+### Table 2.2.1. Count and percentage of records by ‘response’.
 
 | response | Count records | Percentage |
 |:---------|--------------:|-----------:|
@@ -188,19 +210,31 @@ Analyzing the most frequent values of ‘response’ reveals that 21569
     Warning: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
     ℹ Please use `linewidth` instead.
 
-### Figure 1.1. Percentage of records by response.
+### Figure 2.2.1. Percentage of records by response.
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-4-1.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-3-1.png)
+
+<details>
+<summary>Show the code</summary>
 
 ``` r
 cat("\n")
 ```
 
+</details>
+<details>
+<summary>Show the code</summary>
+
 ``` r
 cat("\n")
 ```
 
-## Descriptive analysis of categorical predictors
+</details>
+
+## 2.3. Descriptive analysis of categorical predictors
+
+<details>
+<summary>Show the code</summary>
 
 ``` r
 #' Identify categorical and quantitavie variables
@@ -216,21 +250,24 @@ for (var in cvars){
     var     = var, 
     binary  = response,
     ti      = which(cvars == var), 
-    gi      = which(cvars == var)
+    gi      = which(cvars == var),
+    sec     = "2.3"
     )
 }
 ```
+
+</details>
 
 ### Variable: **col_1**.
 
 Analyzing the most frequent values of ‘col_1’ reveals that 10774 (45.2%)
 of records have ‘col_1’ equal to ‘*20*’, while 45.0% have ‘col_1’ equal
-to ‘*27*’, and 9.4% have ‘col_1’ equal to ‘*23*’ (Table 1.1).
+to ‘*27*’, and 9.4% have ‘col_1’ equal to ‘*23*’ (Table 2.3.1).
 
 **The highest percentage of ‘response’ is for ‘*20*’ with: 9.7%**. The
-next highest percentage is for: ‘*27*’, with: 9.6% (Table 1.1).
+next highest percentage is for: ‘*27*’, with: 9.6% (Table 2.3.1).
 
-### Table 1.1. Count (and percentage) of rds and proportion of events for ‘response’ by ‘col_1’.
+### Table 2.3.1. Count (and percentage) of rds and proportion of events for ‘response’ by ‘col_1’.
 
 | col_1 | n (percentage %) | response |
 |:------|-----------------:|---------:|
@@ -242,61 +279,61 @@ next highest percentage is for: ‘*27*’, with: 9.6% (Table 1.1).
     Warning: The `size` argument of `element_line()` is deprecated as of ggplot2 3.4.0.
     ℹ Please use the `linewidth` argument instead.
 
-### Figure 1.1. Percentage of rds by col_1.
+### Figure 2.3.1. Percentage of rds by col_1.
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-1.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-4-1.png)
 
 ### Variable: **col_6**.
 
 Analyzing the most frequent values of ‘col_6’ reveals that 22744 (95.3%)
 of records have ‘col_6’ equal to ‘*1*’, while 4.7% have ‘col_6’ equal to
-‘*2*’ (Table 1.2).
+‘*2*’ (Table 2.3.2).
 
 **The highest percentage of ‘response’ is for ‘*2*’ with: 59.7%**. The
-next highest percentage is for: ‘*1*’, with: 7.1% (Table 1.2).
+next highest percentage is for: ‘*1*’, with: 7.1% (Table 2.3.2).
 
-### Table 1.2. Count (and percentage) of rds and proportion of events for ‘response’ by ‘col_6’.
+### Table 2.3.2. Count (and percentage) of rds and proportion of events for ‘response’ by ‘col_6’.
 
 | col_6 | n (percentage %) | response |
 |:------|-----------------:|---------:|
 | 1     |    22744 (95.3%) |    0.071 |
 | 2     |      1113 (4.7%) |    0.597 |
 
-### Figure 1.2. Percentage of rds by col_6.
+### Figure 2.3.2. Percentage of rds by col_6.
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-2.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-4-2.png)
 
 ### Variable: **col_8**.
 
 Analyzing the most frequent values of ‘col_8’ reveals that 22582 (94.7%)
 of records have ‘col_8’ equal to ‘*0*’, while 5.3% have ‘col_8’ equal to
-‘*1*’ (Table 1.3).
+‘*1*’ (Table 2.3.3).
 
 **The highest percentage of ‘response’ is for ‘*0*’ with: 9.8%**. The
-next highest percentage is for: ‘*1*’, with: 6.7% (Table 1.3).
+next highest percentage is for: ‘*1*’, with: 6.7% (Table 2.3.3).
 
-### Table 1.3. Count (and percentage) of rds and proportion of events for ‘response’ by ‘col_8’.
+### Table 2.3.3. Count (and percentage) of rds and proportion of events for ‘response’ by ‘col_8’.
 
 | col_8 | n (percentage %) | response |
 |:------|-----------------:|---------:|
 | 0     |    22582 (94.7%) |    0.098 |
 | 1     |      1275 (5.3%) |    0.067 |
 
-### Figure 1.3. Percentage of rds by col_8.
+### Figure 2.3.3. Percentage of rds by col_8.
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-3.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-4-3.png)
 
 ### Variable: **col_17**.
 
 Analyzing the most frequent values of ‘col_17’ reveals that 20544
 (86.1%) of records have ‘col_17’ equal to ‘*1*’, while 9.6% have
 ‘col_17’ equal to ‘*2*’, and 1.8% have ‘col_17’ equal to ‘*3*’ (Table
-1.4).
+2.3.4).
 
 **The highest percentage of ‘response’ is for ‘*5*’ with: 48.0%**. The
-next highest percentage is for: ‘*3*’, with: 39.9% (Table 1.4).
+next highest percentage is for: ‘*3*’, with: 39.9% (Table 2.3.4).
 
-### Table 1.4. Count (and percentage) of rds and proportion of events for ‘response’ by ‘col_17’.
+### Table 2.3.4. Count (and percentage) of rds and proportion of events for ‘response’ by ‘col_17’.
 
 | col_17 | n (percentage %) | response |
 |:-------|-----------------:|---------:|
@@ -306,21 +343,21 @@ next highest percentage is for: ‘*3*’, with: 39.9% (Table 1.4).
 | 4      |       267 (1.1%) |    0.382 |
 | 5      |       331 (1.4%) |    0.480 |
 
-### Figure 1.4. Percentage of rds by col_17.
+### Figure 2.3.4. Percentage of rds by col_17.
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-4.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-4-4.png)
 
 ### Variable: **col_18**.
 
 Analyzing the most frequent values of ‘col_18’ reveals that 22369
 (93.8%) of records have ‘col_18’ equal to ‘*NA*’, while 5.9% have
 ‘col_18’ equal to ‘*1*’, and 0.3% have ‘col_18’ equal to ‘*2*’ (Table
-1.5).
+2.3.5).
 
 **The highest percentage of ‘response’ is for ‘*2*’ with: 34.1%**. The
-next highest percentage is for: ‘*3*’, with: 16.7% (Table 1.5).
+next highest percentage is for: ‘*3*’, with: 16.7% (Table 2.3.5).
 
-### Table 1.5. Count (and percentage) of rds and proportion of events for ‘response’ by ‘col_18’.
+### Table 2.3.5. Count (and percentage) of rds and proportion of events for ‘response’ by ‘col_18’.
 
 | col_18 | n (percentage %) | response |
 |:-------|-----------------:|---------:|
@@ -331,21 +368,21 @@ next highest percentage is for: ‘*3*’, with: 16.7% (Table 1.5).
 | 5      |         1 (0.0%) |    0.000 |
 | NA     |    22369 (93.8%) |    0.098 |
 
-### Figure 1.5. Percentage of rds by col_18.
+### Figure 2.3.5. Percentage of rds by col_18.
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-5.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-4-5.png)
 
 ### Variable: **col_19**.
 
 Analyzing the most frequent values of ‘col_19’ reveals that 20382
 (85.4%) of records have ‘col_19’ equal to ‘*1*’, while 9.3% have
 ‘col_19’ equal to ‘*2*’, and 1.8% have ‘col_19’ equal to ‘*3*’ (Table
-1.6).
+2.3.6).
 
 **The highest percentage of ‘response’ is for ‘*5*’ with: 48.0%**. The
-next highest percentage is for: ‘*3*’, with: 40.2% (Table 1.6).
+next highest percentage is for: ‘*3*’, with: 40.2% (Table 2.3.6).
 
-### Table 1.6. Count (and percentage) of rds and proportion of events for ‘response’ by ‘col_19’.
+### Table 2.3.6. Count (and percentage) of rds and proportion of events for ‘response’ by ‘col_19’.
 
 | col_19 | n (percentage %) | response |
 |:-------|-----------------:|---------:|
@@ -356,11 +393,14 @@ next highest percentage is for: ‘*3*’, with: 40.2% (Table 1.6).
 | 5      |       331 (1.4%) |    0.480 |
 | NA     |       224 (0.9%) |    0.027 |
 
-### Figure 1.6. Percentage of rds by col_19.
+### Figure 2.3.6. Percentage of rds by col_19.
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-6.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-4-6.png)
 
-## Descriptive analysis of quantitative predictors
+## 2.4. Descriptive analysis of quantitative predictors
+
+<details>
+<summary>Show the code</summary>
 
 ``` r
 vars_to_exclude <- c( response, "id" )
@@ -370,22 +410,25 @@ nvars              <- nvars[!nvars %in% vars_to_exclude]
 for (var in nvars){
 
   describeNumericAndBinaryResponse(
-    data             = df, 
-    var              = var, 
-    binary        = response,
-    ti               = which(cvars == var), 
-    gi               = which(cvars == var), 
+    data   = df, 
+    var    = var, 
+    binary = response,
+    ti     = which(nvars == var), 
+    gi     = which(nvars == var),
+    sec    = "2.4" 
     )
 }
 ```
+
+</details>
 
 ### Variable: **col_2**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_2’: ‘*9.45 - 10.35*’, with: 57.1%**. The next highest percentage is
-in the interval: ‘*7.65 - 8.55*’, with: 31.6% (Table 1.).
+in the interval: ‘*7.65 - 8.55*’, with: 31.6% (Table 2.4.1).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_2’.
+### Table 2.4.1. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_2’.
 
 | col_2        | n (percentage %) | response |
 |:-------------|-----------------:|---------:|
@@ -401,20 +444,20 @@ in the interval: ‘*7.65 - 8.55*’, with: 31.6% (Table 1.).
 | 8.55 - 9.45  |        11 (0.0%) |    0.273 |
 | 9.45 - 10.35 |         7 (0.0%) |    0.571 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_2’ intervals.
+### Figure 2.4.1. Percentage of ‘response’ according to ‘col_2’ intervals.
 
     Warning: Removed 1 row containing missing values or values outside the scale range
     (`geom_point()`).
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-1.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-1.png)
 
 ### Variable: **col_3**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_3’: ‘*431.55 - 527.45*’, with: 21.7%**. The next highest percentage
-is in the interval: ‘*335.65 - 431.55*’, with: 13.6% (Table 1.).
+is in the interval: ‘*335.65 - 431.55*’, with: 13.6% (Table 2.4.2).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_3’.
+### Table 2.4.2. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_3’.
 
 | col_3            | n (percentage %) | response |
 |:-----------------|-----------------:|---------:|
@@ -430,21 +473,21 @@ is in the interval: ‘*335.65 - 431.55*’, with: 13.6% (Table 1.).
 | 815.15 - 911.05  |         0 (0.0%) |       NA |
 | 911.05 - 1006.95 |       838 (3.5%) |    0.125 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_3’ intervals.
+### Figure 2.4.2. Percentage of ‘response’ according to ‘col_3’ intervals.
 
     Warning: Removed 2 rows containing missing values or values outside the scale range
     (`geom_point()`).
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-2.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-2.png)
 
 ### Variable: **col_4**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_4’: ‘*671660.45 - 742361.55*’, with: 100.0%**. The next highest
 percentage is in the interval: ‘*-35350.55 - 35350.55*’, with: 9.6%
-(Table 1.).
+(Table 2.4.3).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_4’.
+### Table 2.4.3. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_4’.
 
 | col_4                 | n (percentage %) | response |
 |:----------------------|-----------------:|---------:|
@@ -460,21 +503,21 @@ percentage is in the interval: ‘*-35350.55 - 35350.55*’, with: 9.6%
 | 600959.35 - 671660.45 |         0 (0.0%) |       NA |
 | 671660.45 - 742361.55 |         1 (0.0%) |    1.000 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_4’ intervals.
+### Figure 2.4.3. Percentage of ‘response’ according to ‘col_4’ intervals.
 
     Warning: Removed 9 rows containing missing values or values outside the scale range
     (`geom_point()`).
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-3.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-3.png)
 
 ### Variable: **col_5**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_5’: ‘*14568.25 - 16101.75*’, with: 100.0%**. The next highest
 percentage is in the interval: ‘*-766.75 - 766.75*’, with: 9.6% (Table
-1.).
+2.4.4).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_5’.
+### Table 2.4.4. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_5’.
 
 | col_5               | n (percentage %) | response |
 |:--------------------|-----------------:|---------:|
@@ -490,20 +533,20 @@ percentage is in the interval: ‘*-766.75 - 766.75*’, with: 9.6% (Table
 | 13034.75 - 14568.25 |         0 (0.0%) |       NA |
 | 14568.25 - 16101.75 |         1 (0.0%) |    1.000 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_5’ intervals.
+### Figure 2.4.4. Percentage of ‘response’ according to ‘col_5’ intervals.
 
     Warning: Removed 2 rows containing missing values or values outside the scale range
     (`geom_point()`).
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-4.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-4.png)
 
 ### Variable: **col_7**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_7’: ‘*0.05 - 0.15*’, with: 15.2%**. The next highest percentage is
-in the interval: ‘*0.25 - 0.35*’, with: 14.0% (Table 1.).
+in the interval: ‘*0.25 - 0.35*’, with: 14.0% (Table 2.4.5).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_7’.
+### Table 2.4.5. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_7’.
 
 | col_7        | n (percentage %) | response |
 |:-------------|-----------------:|---------:|
@@ -519,17 +562,17 @@ in the interval: ‘*0.25 - 0.35*’, with: 14.0% (Table 1.).
 | 0.85 - 0.95  |       177 (0.7%) |    0.056 |
 | 0.95 - 1.05  |       546 (2.3%) |    0.046 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_7’ intervals.
+### Figure 2.4.5. Percentage of ‘response’ according to ‘col_7’ intervals.
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-5.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-5.png)
 
 ### Variable: **col_9**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_9’: ‘*0.95 - 1.05*’, with: 59.7%**. The next highest percentage is
-in the interval: ‘*-0.05 - 0.05*’, with: 7.1% (Table 1.).
+in the interval: ‘*-0.05 - 0.05*’, with: 7.1% (Table 2.4.6).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_9’.
+### Table 2.4.6. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_9’.
 
 | col_9        | n (percentage %) | response |
 |:-------------|-----------------:|---------:|
@@ -545,20 +588,20 @@ in the interval: ‘*-0.05 - 0.05*’, with: 7.1% (Table 1.).
 | 0.85 - 0.95  |         0 (0.0%) |       NA |
 | 0.95 - 1.05  |      1113 (4.7%) |    0.597 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_9’ intervals.
+### Figure 2.4.6. Percentage of ‘response’ according to ‘col_9’ intervals.
 
     Warning: Removed 9 rows containing missing values or values outside the scale range
     (`geom_point()`).
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-6.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-6.png)
 
 ### Variable: **col_10**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_10’: ‘*2.7 - 3.3*’, with: 15.3%**. The next highest percentage is
-in the interval: ‘*0.9 - 1.5*’, with: 11.8% (Table 1.).
+in the interval: ‘*0.9 - 1.5*’, with: 11.8% (Table 2.4.7).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_10’.
+### Table 2.4.7. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_10’.
 
 | col_10    | n (percentage %) | response |
 |:----------|-----------------:|---------:|
@@ -574,21 +617,21 @@ in the interval: ‘*0.9 - 1.5*’, with: 11.8% (Table 1.).
 | 6.3 - 6.9 |         0 (0.0%) |       NA |
 | 6.9 - 7.5 |    17097 (71.7%) |    0.101 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_10’ intervals.
+### Figure 2.4.7. Percentage of ‘response’ according to ‘col_10’ intervals.
 
     Warning: Removed 4 rows containing missing values or values outside the scale range
     (`geom_point()`).
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-7.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-7.png)
 
 ### Variable: **col_11**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_11’: ‘*335830.7 - 371181.3*’, with: 100.0%**. The next highest
 percentage is in the interval: ‘*-17675.3 - 17675.3*’, with: 9.6% (Table
-1.).
+2.4.8).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_11’.
+### Table 2.4.8. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_11’.
 
 | col_11              | n (percentage %) | response |
 |:--------------------|-----------------:|---------:|
@@ -604,21 +647,21 @@ percentage is in the interval: ‘*-17675.3 - 17675.3*’, with: 9.6% (Table
 | 300480.1 - 335830.7 |         0 (0.0%) |       NA |
 | 335830.7 - 371181.3 |         1 (0.0%) |    1.000 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_11’ intervals.
+### Figure 2.4.8. Percentage of ‘response’ according to ‘col_11’ intervals.
 
     Warning: Removed 9 rows containing missing values or values outside the scale range
     (`geom_point()`).
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-8.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-8.png)
 
 ### Variable: **col_12**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_12’: ‘*335831.65 - 371182.35*’, with: 100.0%**. The next highest
 percentage is in the interval: ‘*-17675.35 - 17675.35*’, with: 9.6%
-(Table 1.).
+(Table 2.4.9).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_12’.
+### Table 2.4.9. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_12’.
 
 | col_12                | n (percentage %) | response |
 |:----------------------|-----------------:|---------:|
@@ -634,21 +677,21 @@ percentage is in the interval: ‘*-17675.35 - 17675.35*’, with: 9.6%
 | 300480.95 - 335831.65 |         0 (0.0%) |       NA |
 | 335831.65 - 371182.35 |         1 (0.0%) |    1.000 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_12’ intervals.
+### Figure 2.4.9. Percentage of ‘response’ according to ‘col_12’ intervals.
 
     Warning: Removed 9 rows containing missing values or values outside the scale range
     (`geom_point()`).
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-9.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-9.png)
 
 ### Variable: **col_13**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_13’: ‘*10078.55 - 11139.45*’, with: 100.0%**. The next highest
 percentage is in the interval: ‘*530.45 - 1591.35*’, with: 66.7% (Table
-1.).
+2.4.10).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_13’.
+### Table 2.4.10. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_13’.
 
 | col_13              | n (percentage %) | response |
 |:--------------------|-----------------:|---------:|
@@ -664,21 +707,21 @@ percentage is in the interval: ‘*530.45 - 1591.35*’, with: 66.7% (Table
 | 9017.65 - 10078.55  |         0 (0.0%) |       NA |
 | 10078.55 - 11139.45 |         1 (0.0%) |    1.000 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_13’ intervals.
+### Figure 2.4.10. Percentage of ‘response’ according to ‘col_13’ intervals.
 
     Warning: Removed 8 rows containing missing values or values outside the scale range
     (`geom_point()`).
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-10.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-10.png)
 
 ### Variable: **col_14**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_14’: ‘*12843.7285714286 - 14195.7*’, with: 100.0%**. The next
 highest percentage is in the interval: ‘*-675.985714285714 -
-675.985714285714*’, with: 9.6% (Table 1.).
+675.985714285714*’, with: 9.6% (Table 2.4.11).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_14’.
+### Table 2.4.11. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_14’.
 
 | col_14                               | n (percentage %) | response |
 |:-------------------------------------|-----------------:|---------:|
@@ -694,21 +737,21 @@ highest percentage is in the interval: ‘*-675.985714285714 -
 | 11491.7571428571 - 12843.7285714286  |         0 (0.0%) |       NA |
 | 12843.7285714286 - 14195.7           |         1 (0.0%) |    1.000 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_14’ intervals.
+### Figure 2.4.11. Percentage of ‘response’ according to ‘col_14’ intervals.
 
     Warning: Removed 1 row containing missing values or values outside the scale range
     (`geom_point()`).
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-11.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-11.png)
 
 ### Variable: **col_15**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_15’: ‘*335831.65 - 371182.35*’, with: 100.0%**. The next highest
 percentage is in the interval: ‘*-17675.35 - 17675.35*’, with: 9.6%
-(Table 1.).
+(Table 2.4.12).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_15’.
+### Table 2.4.12. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_15’.
 
 | col_15                | n (percentage %) | response |
 |:----------------------|-----------------:|---------:|
@@ -724,21 +767,21 @@ percentage is in the interval: ‘*-17675.35 - 17675.35*’, with: 9.6%
 | 300480.95 - 335831.65 |         0 (0.0%) |       NA |
 | 335831.65 - 371182.35 |         1 (0.0%) |    1.000 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_15’ intervals.
+### Figure 2.4.12. Percentage of ‘response’ according to ‘col_15’ intervals.
 
     Warning: Removed 9 rows containing missing values or values outside the scale range
     (`geom_point()`).
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-12.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-12.png)
 
 ### Variable: **col_16**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_16’: ‘*-126.607142857143 - 126.607142857143*’, with: 9.6%**. The
 next highest percentage is in the interval: ‘*126.607142857143 -
-379.821428571429*’, with: 0.0% (Table 1.).
+379.821428571429*’, with: 0.0% (Table 2.4.13).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_16’.
+### Table 2.4.13. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_16’.
 
 | col_16                               | n (percentage %) | response |
 |:-------------------------------------|-----------------:|---------:|
@@ -754,20 +797,20 @@ next highest percentage is in the interval: ‘*126.607142857143 -
 | 2152.32142857143 - 2405.53571428571  |         0 (0.0%) |       NA |
 | 2405.53571428571 - 2658.75           |         1 (0.0%) |    0.000 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_16’ intervals.
+### Figure 2.4.13. Percentage of ‘response’ according to ‘col_16’ intervals.
 
     Warning: Removed 7 rows containing missing values or values outside the scale range
     (`geom_point()`).
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-13.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-13.png)
 
 ### Variable: **col_20**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_20’: ‘*0.05 - 0.15*’, with: 71.4%**. The next highest percentage is
-in the interval: ‘*0.35 - 0.45*’, with: 62.7% (Table 1.).
+in the interval: ‘*0.35 - 0.45*’, with: 62.7% (Table 2.4.14).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_20’.
+### Table 2.4.14. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_20’.
 
 | col_20       | n (percentage %) | response |
 |:-------------|-----------------:|---------:|
@@ -783,17 +826,17 @@ in the interval: ‘*0.35 - 0.45*’, with: 62.7% (Table 1.).
 | 0.85 - 0.95  |       946 (4.0%) |    0.369 |
 | 0.95 - 1.05  |    21504 (90.1%) |    0.059 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_20’ intervals.
+### Figure 2.4.14. Percentage of ‘response’ according to ‘col_20’ intervals.
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-14.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-14.png)
 
 ### Variable: **col_21**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_21’: ‘*0.85 - 0.95*’, with: 75.0%**. The next highest percentage is
-in the interval: ‘*0.55 - 0.65*’, with: 72.7% (Table 1.).
+in the interval: ‘*0.55 - 0.65*’, with: 72.7% (Table 2.4.15).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_21’.
+### Table 2.4.15. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_21’.
 
 | col_21       | n (percentage %) | response |
 |:-------------|-----------------:|---------:|
@@ -809,18 +852,18 @@ in the interval: ‘*0.55 - 0.65*’, with: 72.7% (Table 1.).
 | 0.85 - 0.95  |         4 (0.0%) |    0.750 |
 | 0.95 - 1.05  |        15 (0.1%) |    0.667 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_21’ intervals.
+### Figure 2.4.15. Percentage of ‘response’ according to ‘col_21’ intervals.
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-15.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-15.png)
 
 ### Variable: **col_22**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_22’: ‘*0.557142857142857 - 0.642857142857143*’, with: 66.7%**. The
 next highest percentage is in the interval: ‘*0.728571428571429 -
-0.814285714285715*’, with: 58.3% (Table 1.).
+0.814285714285715*’, with: 58.3% (Table 2.4.16).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_22’.
+### Table 2.4.16. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_22’.
 
 | col_22                                   | n (percentage %) | response |
 |:-----------------------------------------|-----------------:|---------:|
@@ -836,17 +879,17 @@ next highest percentage is in the interval: ‘*0.728571428571429 -
 | 0.728571428571429 - 0.814285714285715    |        12 (0.1%) |    0.583 |
 | 0.814285714285714 - 0.9                  |        10 (0.0%) |    0.500 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_22’ intervals.
+### Figure 2.4.16. Percentage of ‘response’ according to ‘col_22’ intervals.
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-16.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-16.png)
 
 ### Variable: **col_23**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_23’: ‘*0.25 - 0.35*’, with: 10.4%**. The next highest percentage is
-in the interval: ‘*-0.05 - 0.05*’, with: 9.8% (Table 1.).
+in the interval: ‘*-0.05 - 0.05*’, with: 9.8% (Table 2.4.17).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_23’.
+### Table 2.4.17. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_23’.
 
 | col_23       | n (percentage %) | response |
 |:-------------|-----------------:|---------:|
@@ -862,17 +905,17 @@ in the interval: ‘*-0.05 - 0.05*’, with: 9.8% (Table 1.).
 | 0.85 - 0.95  |       139 (0.6%) |    0.086 |
 | 0.95 - 1.05  |       349 (1.5%) |    0.046 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_23’ intervals.
+### Figure 2.4.17. Percentage of ‘response’ according to ‘col_23’ intervals.
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-17.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-17.png)
 
 ### Variable: **col_24**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_24’: ‘*0.75 - 0.85*’, with: 14.3%**. The next highest percentage is
-in the interval: ‘*0.55 - 0.65*’, with: 12.7% (Table 1.).
+in the interval: ‘*0.55 - 0.65*’, with: 12.7% (Table 2.4.18).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_24’.
+### Table 2.4.18. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_24’.
 
 | col_24       | n (percentage %) | response |
 |:-------------|-----------------:|---------:|
@@ -888,17 +931,17 @@ in the interval: ‘*0.55 - 0.65*’, with: 12.7% (Table 1.).
 | 0.85 - 0.95  |       221 (0.9%) |    0.059 |
 | 0.95 - 1.05  |       845 (3.5%) |    0.067 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_24’ intervals.
+### Figure 2.4.18. Percentage of ‘response’ according to ‘col_24’ intervals.
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-18.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-18.png)
 
 ### Variable: **col_25**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_25’: ‘*0.95 - 1.05*’, with: 68.3%**. The next highest percentage is
-in the interval: ‘*0.85 - 0.95*’, with: 58.2% (Table 1.).
+in the interval: ‘*0.85 - 0.95*’, with: 58.2% (Table 2.4.19).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_25’.
+### Table 2.4.19. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_25’.
 
 | col_25       | n (percentage %) | response |
 |:-------------|-----------------:|---------:|
@@ -914,18 +957,18 @@ in the interval: ‘*0.85 - 0.95*’, with: 58.2% (Table 1.).
 | 0.85 - 0.95  |       165 (0.7%) |    0.582 |
 | 0.95 - 1.05  |        63 (0.3%) |    0.683 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_25’ intervals.
+### Figure 2.4.19. Percentage of ‘response’ according to ‘col_25’ intervals.
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-19.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-19.png)
 
 ### Variable: **col_26**.
 
 **The highest percentage of ‘response’ occurs in the interval of
 ‘col_26’: ‘*0.814285714285714 - 0.9*’, with: 58.7%**. The next highest
 percentage is in the interval: ‘*0.557142857142857 -
-0.642857142857143*’, with: 47.1% (Table 1.).
+0.642857142857143*’, with: 47.1% (Table 2.4.20).
 
-### Table 1.. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_26’.
+### Table 2.4.20. Count (and percentage) of rds and proportion of events for ‘responseaccording to different intervals of ’col_26’.
 
 | col_26                                   | n (percentage %) | response |
 |:-----------------------------------------|-----------------:|---------:|
@@ -941,9 +984,24 @@ percentage is in the interval: ‘*0.557142857142857 -
 | 0.728571428571429 - 0.814285714285715    |         7 (0.0%) |    0.429 |
 | 0.814285714285714 - 0.9                  |       109 (0.5%) |    0.587 |
 
-### Figure 1.. Percentage of ‘response’ according to ‘col_26’ intervals.
+### Figure 2.4.20. Percentage of ‘response’ according to ‘col_26’ intervals.
 
     Warning: Removed 1 row containing missing values or values outside the scale range
     (`geom_point()`).
 
-![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-20.png)
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-5-20.png)
+
+## 2.5. Matrix correlation of quantitative predictors
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+M      <- cor(df[, nvars], use = "pairwise.complete.obs")
+df_cor <- cor(df[, nvars])
+corrplot(df_cor, order = 'hclust', addrect = 5)
+```
+
+</details>
+
+![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-1.png)

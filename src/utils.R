@@ -58,7 +58,8 @@ describeCategorical <- function(
     row_name     = "records",
     logname_eda  = NULL,
     min_cat      = 15,
-    min_grouping = 10
+    min_grouping = 10,
+    sec          = 1
 ) {
   #' Calculate frequency and percentages for different levels of variable "var" 
   #' in dataset "data" and display them in table and graph.
@@ -122,7 +123,6 @@ describeCategorical <- function(
   }
   
   # Update table index
-  if (!exists("sec")) { sec <- 1 }
   tindex <- paste0(sec, ".", ti) 
   
   # Comment on the top 3 percentage of the most frequent category
@@ -206,7 +206,8 @@ describeCategoricalAndBinary <- function(
     save_plots      = FALSE,
     ini_time        = NULL,
     logname_eda     = NULL,
-    min_cat         = 15
+    min_cat         = 15,
+    sec             = 1
 ) {
   #' Calculate frequency and percentages for the different levels of variable 
   #' "var" in dataset "data" and display them in table and graph.
@@ -277,7 +278,6 @@ describeCategoricalAndBinary <- function(
   
   # Comment on the top 3 percentage of the most frequent category
   # Update the table index
-  if( !exists("sec") ){ sec <- 1 }
   tindex <- paste0(sec, ".", ti) 
   
   text <- 
@@ -425,7 +425,8 @@ describeNumericAndBinaryResponse <- function(
     save_plots       = FALSE,
     ini_time         = NULL,
     logname_eda      = NULL,
-    n_intervals      = 10
+    n_intervals      = 10,
+    sec              = 1
 ){
   #' Calculate frequency and percentages for the different levels of variable 
   #' "var" in dataset "data" and display them in table and graph.
@@ -608,7 +609,6 @@ describeNumericAndBinaryResponse <- function(
     
     
     # Update table index
-    if( !exists("sec") ){ sec <- 1 }
     tindex <- paste0(sec, ".", ti)
     
     # Sort the table to find the highest binary percentages

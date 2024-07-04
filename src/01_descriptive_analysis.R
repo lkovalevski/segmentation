@@ -4,7 +4,13 @@
 #' date: April, 2024 
 #' toctitle: "Tabla de Contenidos"
 #' output: 
-#'   github_document
+#'   bookdown::html_document2:
+#'     toc: TRUE
+#'     toc_float: true
+#'     toc_depth: 2
+#'     code_folding: hide
+#'     df_print: paged
+#'     theme: united
 #' ---
 
 
@@ -169,7 +175,7 @@ writeText("\n### Asociation analysis - Quantitative predictors")
 
 cat("\n")
 cat("\n")
-cat(paste0("\n### * Matriz de correlaciones.* \n"))
+cat(paste0("\n### * Matrix Correlation.* \n"))
 cat("\n")
 cat("\n")
 

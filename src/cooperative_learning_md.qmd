@@ -1,12 +1,14 @@
 ---
 title: "Cooperative Learning"
 author: "Leandro Kovalevski"
-toc: true
-toc-depth: 2
 format:
   gfm:
-    code-folding: true
+    toc: true
+    number-sections: true
+    toc-depth: 2
+    code-fold: true
     code-summary: "Show the code"
+    highlight-style: github
 theme:
   light: zephyr
   dark: cyborg
@@ -16,37 +18,21 @@ theme:
 
 #  Executive summary {-}
 
+- A database of a random sample of 23,857 tax identification numbers (CUITs) is analyzed. Past financial behavior is used to predict default. The percent of default in the dataset is 9.6%.
+- Variable distributions and associations with the response are presented.
+- There is a clear (marginal) association between default and some variabes ('col_3', 'col_2', 'col_6', 'col_8', 'col_17', 'col_20', 'col_21', 'col_22', 'col_2' and 'col_26') 
+)
+- ...
+- ...
 - to be completed..
 - ... 
 - ...
 
 
-```{r}
-file_name <- "df_bcra.rds"
-```
- 
-This report was run with the **objetive** of describing the bcra dataset: \n
-
-
- -  **Run date**: `r  Sys.Date()`
- 
- -  **Dataset**: `r  file_name` 
-
-
-
-
-# Dataset description.
-
-The database consists of a random sample of 23,857 tax identification numbers (CUITs) belonging to individuals who had at least one debt in the Argentine financial system in June 2019, and were in credit situation 1 or 2 (meaning they did not have overdue payments exceeding 90 days), obtained from the debtor database provided by the Central Bank of the Argentine Republic (BCRA) for the period of June 2019.
-For the tax identification numbers in the random sample, debts in all entities were recorded and summarized for June 2019, as well as for the previous 6 months. Debts of these tax identification numbers between July 2019 and June 2020 were also recorded to assess their evolution. 
-The response variable is a binary variable constructed from the most severe credit situation of the tax identification number (CUIT) between the periods of July 2019 and June 2020. The variable takes the value 1 if the most severe credit situation is greater than or equal to 3 in any debt any period, and 0 otherwise.
-In the dataset 'df_bcra.rds', the information recorded with 28 variables is available. The data is anonymized and variable names are not displayed.
-
-
-# Settings {-}
+#  Settings {-}
 
 ```{r}
-#' ## Load data and needed packages.
+#' Load data and needed packages.
 
 #' Install (if needed)  'here' package to use relative paths. 
 if(!("here" %in% installed.packages()[, "Package"])){ 
@@ -74,19 +60,31 @@ if( !exists("file_name") ){
 
 #' read data
 df <- readRDS(file.path(file_path, file_name))
+
 ```
 
 
-# Exploratory Data Analysis
 
-## General descriptive analysis.
+# 1. Dataset description {-}
+
+The database consists of a random sample of 23,857 tax identification numbers (CUITs) belonging to individuals who had at least one debt in the Argentine financial system in June 2019, and were in credit situation 1 or 2 (meaning they did not have overdue payments exceeding 90 days), obtained from the debtor database provided by the Central Bank of the Argentine Republic (BCRA) for the period of June 2019.
+For the tax identification numbers in the random sample, debts in all entities were recorded and summarized for June 2019, as well as for the previous 6 months. Debts of these tax identification numbers between July 2019 and June 2020 were also recorded to assess their evolution. 
+The response variable is a binary variable constructed from the most severe credit situation of the tax identification number (CUIT) between the periods of July 2019 and June 2020. The variable takes the value 1 if the most severe credit situation is greater than or equal to 3 in any debt any period, and 0 otherwise.
+In the dataset 'df_bcra.rds', the information recorded with 28 variables is available. The data is anonymized and variable names are not displayed.
+
+
+
+
+# 2. Exploratory Data Analysis {-}
+
+## 2.1. General descriptive analysis {-}
 
 ```{r}
 skim(df)
 
 ```
 
-## Response descriptive analysis.
+## 2.2. Response descriptive analysis {-}
 
 To analyze the default, we use the variable: **'response'**, which take the
 following values: \n
@@ -108,7 +106,8 @@ cat(paste0("\n### Response variabe: **", response, "**.\n"))
 describeCategorical(
   data         = df,
   var          = response,
-  bar_color    = "#fff159" 
+  bar_color    = "#fff159",
+  sec          = "2.2"
   ) 
 
 
@@ -123,7 +122,7 @@ cat("\n")
 
 
 
-## Descriptive analysis of categorical predictors
+## 2.3. Descriptive analysis of categorical predictors {-}
 
 ```{r}
 #| output: asis
@@ -141,13 +140,14 @@ for (var in cvars){
     var     = var, 
     binary  = response,
     ti      = which(cvars == var), 
-    gi      = which(cvars == var)
+    gi      = which(cvars == var),
+    sec     = "2.3"
     )
 }
 
 ```
 
-## Descriptive analysis of quantitative predictors
+## 2.4. Descriptive analysis of quantitative predictors {-}
 
 
 ```{r}
@@ -160,13 +160,26 @@ nvars              <- nvars[!nvars %in% vars_to_exclude]
 for (var in nvars){
 
   describeNumericAndBinaryResponse(
-    data             = df, 
-    var              = var, 
-    binary        = response,
-    ti               = which(cvars == var), 
-    gi               = which(cvars == var), 
+    data   = df, 
+    var    = var, 
+    binary = response,
+    ti     = which(nvars == var), 
+    gi     = which(nvars == var),
+    sec    = "2.4" 
     )
 }
 
 ```
 
+
+## 2.5. Matrix correlation of quantitative predictors {-}
+
+
+```{r}
+#| output: asis
+
+M      <- cor(df[, nvars], use = "pairwise.complete.obs")
+df_cor <- cor(df[, nvars])
+corrplot(df_cor, order = 'hclust', addrect = 5)
+
+```
