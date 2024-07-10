@@ -20,8 +20,10 @@ theme:
 
 - A database of a random sample of 23,857 tax identification numbers (CUITs) is analyzed. Past financial behavior is used to predict default. The percent of default in the dataset is 9.6%.
 - Variable distributions and associations with the response are presented.
-- There is a clear (marginal) association between default and some variabes ('col_3', 'col_2', 'col_6', 'col_8', 'col_17', 'col_20', 'col_21', 'col_22', 'col_2' and 'col_26') 
+- There is a clear (marginal) association between default and some variables ('col_3', 'col_2', 'col_6', 'col_8', 'col_17', 'col_20', 'col_21', 'col_22', 'col_2' and 'col_26') 
 )
+- The dataset was divided in training and testing sets in a 70-30 ratio.
+- The Cooperative Learning model performance was compared with a Logistic Regression model performance and a Random Forest model performance.
 - ...
 - ...
 - to be completed..
@@ -45,7 +47,10 @@ source(here::here("src", "utils.R"), encoding = "UTF-8")
 #' Cargar las librerías necesarias
 loadPackages(c(
   "here", "multiview", "ggplot2", "knitr", "scales", "dplyr", "doBy", "moments",
-  "gains", "ROCR", "skimr", "moments", "corrplot"
+  "gains", "ROCR", "skimr", "moments", "corrplot",
+  # Metrics
+  "pROC",
+  "Metrics"
   ))
 
 #' Set data path
@@ -181,5 +186,136 @@ for (var in nvars){
 M      <- cor(df[, nvars], use = "pairwise.complete.obs")
 df_cor <- cor(df[, nvars])
 corrplot(df_cor, order = 'hclust', addrect = 5)
+
+```
+
+
+
+# 3. Model Training {-}
+
+## 3.1. Training and testing sets {-}
+
+```{r}
+# Split the data into a training set (70%) and a test set (30%)
+
+# Set a seed to reproduce the results
+set.seed(2000)
+
+# Sample Indexes
+indexes = sample(1:nrow(df), size = round(0.3 * nrow(df)))
+
+# Split data
+df_train = df[-indexes, ]
+df_test  = df[ indexes, ]
+
+# Predictors to exclude
+predictors_to_exclude <- c(response, "id", "col_18", "col_19")
+predictors            <- colnames(df)[! colnames(df) %in% predictors_to_exclude]
+
+# Model formula to analyze the renponse variable with all the predictors
+model_formula <- formula(paste0(response, " ~ ", paste(predictors, collapse = " + ") ) )
+
+# Evaluation Metrics
+#' We create a function to calculate validation metrics
+
+calculate_metrics <- function(name = "model", y_real, y_prob, cutoff = 0.5 ) {
+  # Root Mean Squared Error (RMSE)
+  rmse_value <- rmse(y_real, y_prob)
+  
+  # Area Under the Curve (AUC)
+  roc_obj   <- roc(response = y_real, predictor = y_prob)
+  auc_value <- roc_obj$auc
+  
+  # Lift for the top 10% of probabilities
+  n_top_5       <- ceiling(0.05 * length(y_prob))
+  top_5_indices <- order(y_prob, decreasing = TRUE)[1:n_top_5]
+  lift_value    <- mean(y_real[top_5_indices]) / mean(y_real)
+  
+  # Binarized predictions according to the cutoff point
+  y_pred <- ifelse(y_prob >= cutoff, 1, 0)
+  
+  # Confusion matrix
+  confusion_matrix <- table(y_real, y_pred)
+  
+  # Calculation of metrics
+  accuracy    <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+  recall      <- confusion_matrix[2, 2] / sum(confusion_matrix[2, ])
+  precision   <- confusion_matrix[2, 2] / sum(confusion_matrix[, 2])
+  specificity <- confusion_matrix[1, 1] / sum(confusion_matrix[1, ])
+  f1_score    <- 2 * ((precision * recall) / (precision + recall))
+  
+  # Create a data frame with the metrics
+  metrics <- data.frame(
+    Model       = name,
+    RMSE        = rmse_value,
+    AUC         = auc_value,
+    Lift_5      = lift_value,
+    Accuracy    = accuracy,
+    Recall      = recall,
+    Precision   = precision,
+    Specificity = specificity,
+    F1_Score    = f1_score
+  )
+  
+  return(metrics)
+}
+
+
+performance_models  <- data.frame()
+prop_df_train       <- prop.table(table(df_train[response]))[2]
+
+```
+
+## 3.2. Training models {-}
+
+```{r}
+#| output: asis
+
+cat(paste0("\n### Logistic Regression.\n"))
+cat(paste0("\n A stepped wise logistic regression is fitted.\n"))
+
+#' Full model
+rl_full <- glm(formula, family = binomial(link = 'logit'), data = df_train)
+summary(rl_full)
+
+#' Model with only the intercept
+rl_intercepto <- glm(response ~ 1, family = binomial(link = 'logit'), data = df_train)
+summary(rl_intercepto)
+
+fit_rl <- step(
+  rl_intercepto, 
+  scope = list(lower = rl_intercepto, upper = rl_full), 
+  direction = "both", # direction can be "both", "forward", "backward"
+  trace = 0
+) 
+summary(fit_rl)
+
+#' Logistic Regression Metrics
+predictions <- predict(fit_rl, df_test, type = "response")
+
+performance_rl <- calculate_metrics(
+  name = "Log Reg",
+  y_real = as.numeric(as.character(df_test[[response]])), # it is necessary to convert the factor variable to numeric
+  y_prob = predictions,
+  cutoff = prop_df_train
+)
+
+performance_models <- rbind(
+  performance_models, 
+  performance_rl
+)
+
+knitr::kable(performance_models, digits = 3)
+
+
+
+
+
+cat(paste0("\n### Random Forest.\n"))
+
+
+
+
+cat(paste0("\n### Cooperative Learning.\n"))
 
 ```
