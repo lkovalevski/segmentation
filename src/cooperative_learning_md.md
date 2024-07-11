@@ -13,6 +13,9 @@ Leandro Kovalevski
     predictors](#descriptive-analysis-of-quantitative-predictors)
   - [2.5. Matrix correlation of quantitative
     predictors](#matrix-correlation-of-quantitative-predictors)
+- [3. Model Training](#model-training)
+  - [3.1. Training and testing sets](#training-and-testing-sets)
+  - [3.2. Training models](#training-models)
 
 # Executive summary
 
@@ -22,8 +25,12 @@ Leandro Kovalevski
 - Variable distributions and associations with the response are
   presented.
 - There is a clear (marginal) association between default and some
-  variabes (‘col_3’, ‘col_2’, ‘col_6’, ‘col_8’, ‘col_17’, ‘col_20’,
+  variables (‘col_3’, ‘col_2’, ‘col_6’, ‘col_8’, ‘col_17’, ‘col_20’,
   ‘col_21’, ‘col_22’, ‘col_2’ and ‘col_26’) )
+- The dataset was divided in training and testing sets in a 70-30 ratio.
+- The Cooperative Learning model performance was compared with a
+  Logistic Regression model performance and a Random Forest model
+  performance.
 - …
 - …
 - to be completed..
@@ -48,8 +55,18 @@ source(here::here("src", "utils.R"), encoding = "UTF-8")
 
 #' Cargar las librerías necesarias
 loadPackages(c(
-  "here", "multiview", "ggplot2", "knitr", "scales", "dplyr", "doBy", "moments",
+  "here"
+  , "multiview", "scales", "dplyr", "doBy", "moments",
   "gains", "ROCR", "skimr", "moments", "corrplot"
+  # Stats & Metrics
+  , "pROC"
+  , "Metrics"
+  # Machine Learning
+  , "randomForest"
+  # Visualization
+  , "ggplot2"
+  , "knitr"
+  , "broom"
   ))
 
 #' Set data path
@@ -1005,3 +1022,368 @@ corrplot(df_cor, order = 'hclust', addrect = 5)
 </details>
 
 ![](cooperative_learning_md_files/figure-commonmark/unnamed-chunk-6-1.png)
+
+# 3. Model Training
+
+## 3.1. Training and testing sets
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+# Split the data into a training set (70%) and a test set (30%)
+
+# Set a seed to reproduce the results
+set.seed(2000)
+
+# Sample Indexes
+indexes = sample(1:nrow(df), size = round(0.3 * nrow(df)))
+
+# Split data
+df_train = df[-indexes, ]
+df_test  = df[ indexes, ]
+
+# Predictors to exclude
+predictors_to_exclude <- c(response, "id", "col_18", "col_19")
+predictors            <- colnames(df)[! colnames(df) %in% predictors_to_exclude]
+
+# Model formula to analyze the renponse variable with all the predictors
+model_formula <- formula(paste0(response, " ~ ", paste(predictors, collapse = " + ") ) )
+
+# Evaluation Metrics
+#' We create a function to calculate validation metrics
+
+calculate_metrics <- function(name = "model", y_real, y_prob, cutoff = 0.5 ) {
+  # Root Mean Squared Error (RMSE)
+  rmse_value <- rmse(y_real, y_prob)
+  
+  # Area Under the Curve (AUC)
+  roc_obj   <- roc(response = y_real, predictor = y_prob)
+  auc_value <- roc_obj$auc
+  
+  # Lift for the top 10% of probabilities
+  n_top_5       <- ceiling(0.05 * length(y_prob))
+  top_5_indices <- order(y_prob, decreasing = TRUE)[1:n_top_5]
+  lift_value    <- mean(y_real[top_5_indices]) / mean(y_real)
+  
+  # Binarized predictions according to the cutoff point
+  y_pred <- ifelse(y_prob >= cutoff, 1, 0)
+  
+  # Confusion matrix
+  confusion_matrix <- table(y_real, y_pred)
+  
+  # Calculation of metrics
+  accuracy    <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+  recall      <- confusion_matrix[2, 2] / sum(confusion_matrix[2, ])
+  precision   <- confusion_matrix[2, 2] / sum(confusion_matrix[, 2])
+  specificity <- confusion_matrix[1, 1] / sum(confusion_matrix[1, ])
+  f1_score    <- 2 * ((precision * recall) / (precision + recall))
+  
+  # Create a data frame with the metrics
+  metrics <- data.frame(
+    Model       = name,
+    RMSE        = rmse_value,
+    AUC         = auc_value,
+    Lift_5      = lift_value,
+    Accuracy    = accuracy,
+    Recall      = recall,
+    Precision   = precision,
+    Specificity = specificity,
+    F1_Score    = f1_score
+  )
+  
+  return(metrics)
+}
+
+
+performance_models  <- data.frame()
+prop_df_train       <- prop.table(table(df_train[response]))[2]
+```
+
+</details>
+
+## 3.2. Training models
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n### Logistic Regression.\n"))
+```
+
+</details>
+
+### Logistic Regression.
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n A stepped wise logistic regression is fitted.\n"))
+```
+
+</details>
+
+A stepped wise logistic regression is fitted.
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+#' Full model
+rl_full <- glm(model_formula, family = binomial(link = 'logit'), data = df_train)
+```
+
+</details>
+
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+kable(tidy(rl_full))
+```
+
+</details>
+
+<div class="cell-output-display">
+
+| term        |   estimate | std.error |  statistic |   p.value |
+|:------------|-----------:|----------:|-----------:|----------:|
+| (Intercept) | -2.1548445 | 0.5656791 | -3.8093058 | 0.0001394 |
+| col_123     | -0.0297868 | 0.1066323 | -0.2793412 | 0.7799830 |
+| col_124     | -1.0538690 | 0.6119082 | -1.7222666 | 0.0850212 |
+| col_127     | -0.0693552 | 0.0625855 | -1.1081664 | 0.2677900 |
+| col_2       |  0.1805211 | 0.0282530 |  6.3894470 | 0.0000000 |
+| col_3       |  0.0010621 | 0.0001595 |  6.6585931 | 0.0000000 |
+| col_4       |  0.0011719 | 0.0006727 |  1.7421205 | 0.0814874 |
+| col_5       | -0.0003444 | 0.0004308 | -0.7995341 | 0.4239808 |
+| col_62      |  1.3285667 | 0.1082214 | 12.2763755 | 0.0000000 |
+| col_7       | -0.8913568 | 1.0002635 | -0.8911219 | 0.3728638 |
+| col_81      |  0.2644806 | 0.7025118 |  0.3764785 | 0.7065612 |
+| col_9       |         NA |        NA |         NA |        NA |
+| col_10      | -0.1421551 | 0.0255459 | -5.5646917 | 0.0000000 |
+| col_11      | -0.0047004 | 0.0042673 | -1.1014772 | 0.2706890 |
+| col_12      |  0.0037369 | 0.0042652 |  0.8761422 | 0.3809527 |
+| col_13      |  0.0079600 | 0.0049234 |  1.6167581 | 0.1059305 |
+| col_14      | -0.0003062 | 0.0006363 | -0.4812144 | 0.6303641 |
+| col_15      |         NA |        NA |         NA |        NA |
+| col_16      |         NA |        NA |         NA |        NA |
+| col_172     |  1.4800915 | 0.1083553 | 13.6596133 | 0.0000000 |
+| col_173     |  1.6877773 | 0.1874728 |  9.0027861 | 0.0000000 |
+| col_174     |  1.4919251 | 0.2693728 |  5.5385136 | 0.0000000 |
+| col_175     |  1.8797428 | 0.2671755 |  7.0356107 | 0.0000000 |
+| col_20      | -0.4169627 | 0.5481793 | -0.7606320 | 0.4468769 |
+| col_21      |  0.9764551 | 0.7452039 |  1.3103193 | 0.1900879 |
+| col_22      |         NA |        NA |         NA |        NA |
+| col_23      |  0.6514127 | 1.1882639 |  0.5482054 | 0.5835509 |
+| col_24      | -0.6773908 | 0.8399731 | -0.8064435 | 0.4199872 |
+| col_25      | -0.0235724 | 0.4086064 | -0.0576898 | 0.9539957 |
+| col_26      |  1.3083012 | 0.6183329 |  2.1158526 | 0.0343573 |
+
+</div>
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+#' Model with only the intercept
+rl_intercepto <- glm(response ~ 1, family = binomial(link = 'logit'), data = df_train)
+
+fit_rl <- step(
+  rl_intercepto, 
+  scope = list(lower = rl_intercepto, upper = rl_full), 
+  direction = "both", # direction can be "both", "forward", "backward"
+  trace = 0
+) 
+```
+
+</details>
+
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+kable(tidy(fit_rl))
+```
+
+</details>
+
+<div class="cell-output-display">
+
+| term        |   estimate | std.error | statistic |   p.value |
+|:------------|-----------:|----------:|----------:|----------:|
+| (Intercept) | -1.7132509 | 0.3539160 | -4.840841 | 0.0000013 |
+| col_172     |  1.4231110 | 0.1022302 | 13.920649 | 0.0000000 |
+| col_173     |  1.7344084 | 0.1819099 |  9.534436 | 0.0000000 |
+| col_174     |  1.7221783 | 0.2226334 |  7.735488 | 0.0000000 |
+| col_175     |  2.1445407 | 0.2050958 | 10.456290 | 0.0000000 |
+| col_62      |  1.3169038 | 0.1057784 | 12.449646 | 0.0000000 |
+| col_3       |  0.0010587 | 0.0001587 |  6.672780 | 0.0000000 |
+| col_25      |  0.5022742 | 0.3194120 |  1.572496 | 0.1158355 |
+| col_2       |  0.1833378 | 0.0264695 |  6.926373 | 0.0000000 |
+| col_10      | -0.1417948 | 0.0253756 | -5.587841 | 0.0000000 |
+| col_23      | -0.8953402 | 0.2321648 | -3.856486 | 0.0001150 |
+| col_20      | -0.8870267 | 0.3392469 | -2.614693 | 0.0089308 |
+| col_13      |  0.0036957 | 0.0018134 |  2.037990 | 0.0415509 |
+
+</div>
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+#' Logistic Regression Metrics
+predictions <- predict(fit_rl, df_test, type = "response")
+
+performance_rl <- calculate_metrics(
+  name   = "Log Reg",
+  y_real = as.numeric(as.character(df_test[[response]])), # it is necessary to convert the factor variable to numeric
+  y_prob = predictions,
+  cutoff = prop_df_train
+)
+```
+
+</details>
+
+    Setting levels: control = 0, case = 1
+
+    Setting direction: controls < cases
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+performance_models <- rbind(
+  performance_models, 
+  performance_rl
+)
+
+knitr::kable(performance_models, digits = 3)
+```
+
+</details>
+
+<div class="cell-output-display">
+
+| Model   |  RMSE |       AUC | Lift_5 | Accuracy | Recall | Precision | Specificity | F1_Score |
+|:--------|------:|----------:|-------:|---------:|-------:|----------:|------------:|---------:|
+| Log Reg | 0.259 | 0.8050348 |  6.271 |    0.866 |  0.599 |     0.372 |       0.894 |    0.459 |
+
+</div>
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n### Random Forest.\n"))
+```
+
+</details>
+
+### Random Forest.
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+#'  
+#' ## Random Forest
+#' 
+
+nt = 300
+df_train[[response]] <- as.factor(df_train[[response]])
+
+randomForest <- randomForest(
+  model_formula,
+  data       = df_train,  
+  ntree      = nt,  
+  mtry       = 5,    
+  importance = TRUE
+) 
+
+#' Random Forest metrics
+predictions <- predict(randomForest, df_test, type = "prob")[, 2]
+
+performance_rf <- calculate_metrics(
+  name   = paste0("Random Forest - ntree ", nt),
+  y_real = as.numeric(as.character(df_test[[response]])), 
+  y_prob = predictions,
+  cutoff = prop_df_train
+)
+```
+
+</details>
+
+    Setting levels: control = 0, case = 1
+    Setting direction: controls < cases
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+performance_models <- rbind(
+  performance_models, 
+  performance_rf
+)
+
+knitr::kable(performance_models, digits = 3)
+```
+
+</details>
+
+<div class="cell-output-display">
+
+| Model                     |  RMSE |       AUC | Lift_5 | Accuracy | Recall | Precision | Specificity | F1_Score |
+|:--------------------------|------:|----------:|-------:|---------:|-------:|----------:|------------:|---------:|
+| Log Reg                   | 0.259 | 0.8050348 |  6.271 |    0.866 |  0.599 |     0.372 |       0.894 |    0.459 |
+| Random Forest - ntree 300 | 0.262 | 0.7828149 |  5.918 |    0.845 |  0.614 |     0.330 |       0.870 |    0.430 |
+
+</div>
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n### Cooperative Learning.\n"))
+```
+
+</details>
+
+### Cooperative Learning.

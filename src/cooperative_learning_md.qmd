@@ -46,11 +46,18 @@ source(here::here("src", "utils.R"), encoding = "UTF-8")
 
 #' Cargar las librerías necesarias
 loadPackages(c(
-  "here", "multiview", "ggplot2", "knitr", "scales", "dplyr", "doBy", "moments",
-  "gains", "ROCR", "skimr", "moments", "corrplot",
-  # Metrics
-  "pROC",
-  "Metrics"
+  "here"
+  , "multiview", "scales", "dplyr", "doBy", "moments",
+  "gains", "ROCR", "skimr", "moments", "corrplot"
+  # Stats & Metrics
+  , "pROC"
+  , "Metrics"
+  # Machine Learning
+  , "randomForest"
+  # Visualization
+  , "ggplot2"
+  , "knitr"
+  , "broom"
   ))
 
 #' Set data path
@@ -275,12 +282,13 @@ cat(paste0("\n### Logistic Regression.\n"))
 cat(paste0("\n A stepped wise logistic regression is fitted.\n"))
 
 #' Full model
-rl_full <- glm(formula, family = binomial(link = 'logit'), data = df_train)
-summary(rl_full)
+rl_full <- glm(model_formula, family = binomial(link = 'logit'), data = df_train)
+
+kable(tidy(rl_full))
+
 
 #' Model with only the intercept
 rl_intercepto <- glm(response ~ 1, family = binomial(link = 'logit'), data = df_train)
-summary(rl_intercepto)
 
 fit_rl <- step(
   rl_intercepto, 
@@ -288,13 +296,14 @@ fit_rl <- step(
   direction = "both", # direction can be "both", "forward", "backward"
   trace = 0
 ) 
-summary(fit_rl)
+kable(tidy(fit_rl))
+
 
 #' Logistic Regression Metrics
 predictions <- predict(fit_rl, df_test, type = "response")
 
 performance_rl <- calculate_metrics(
-  name = "Log Reg",
+  name   = "Log Reg",
   y_real = as.numeric(as.character(df_test[[response]])), # it is necessary to convert the factor variable to numeric
   y_prob = predictions,
   cutoff = prop_df_train
@@ -308,11 +317,40 @@ performance_models <- rbind(
 knitr::kable(performance_models, digits = 3)
 
 
-
-
-
 cat(paste0("\n### Random Forest.\n"))
 
+
+#'  
+#' ## Random Forest
+#' 
+
+nt = 300
+df_train[[response]] <- as.factor(df_train[[response]])
+
+randomForest <- randomForest(
+  model_formula,
+  data       = df_train,  
+  ntree      = nt,  
+  mtry       = 5,    
+  importance = TRUE
+) 
+
+#' Random Forest metrics
+predictions <- predict(randomForest, df_test, type = "prob")[, 2]
+
+performance_rf <- calculate_metrics(
+  name   = paste0("Random Forest - ntree ", nt),
+  y_real = as.numeric(as.character(df_test[[response]])), 
+  y_prob = predictions,
+  cutoff = prop_df_train
+)
+
+performance_models <- rbind(
+  performance_models, 
+  performance_rf
+)
+
+knitr::kable(performance_models, digits = 3)
 
 
 
