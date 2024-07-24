@@ -46,16 +46,24 @@ source(here::here("src", "utils.R"), encoding = "UTF-8")
 
 #' Cargar las librerías necesarias
 loadPackages(c(
+  # Data Preparation
   "here"
-  , "multiview", "scales", "dplyr", "doBy", "moments",
-  "gains", "ROCR", "skimr", "moments", "corrplot"
+  , "dplyr"
   # Stats & Metrics
   , "pROC"
   , "Metrics"
+  ,"gains"
+  , "ROCR"
+  , "skimr"
+  , "scales"
+  , "doBy"
+  , "moments"
   # Machine Learning
   , "randomForest"
+  , "multiview"
   # Visualization
   , "ggplot2"
+  , "corrplot"
   , "knitr"
   , "broom"
   ))
@@ -70,8 +78,17 @@ if( !exists("file_name") ){
   file_name <- "df_bcra.rds"
 }
 
-#' read data
+#' Data group (or views) name
+group_file_name <- "groups.csv"
+
+#' Read dataset
 df <- readRDS(file.path(file_path, file_name))
+
+#' Read dataset
+groups <- read.csv2(file.path(file_path, group_file_name))
+
+#' Define the response
+response <- "response"
 
 ```
 
@@ -111,8 +128,6 @@ in any debt any period. \n
 ```{r}
 #| output: asis
 
-response <- "response"
-
 cat(paste0("\n### Response variabe: **", response, "**.\n"))
 
 describeCategorical(
@@ -145,6 +160,12 @@ nvars <- names(df)[(sapply(X = df, FUN = class)) %in%
 cvars <- names(df)[(sapply(X = df, FUN = class)) %in% 
                      c("character", "factor", "logical", "text") ]
 
+#' Delete unuseful variables
+vars_to_exclude <- c( response, "id" )
+nvars              <- nvars[!nvars %in% vars_to_exclude]
+
+
+
 for (var in cvars){
   
   describeCategoricalAndBinary(
@@ -164,10 +185,6 @@ for (var in cvars){
 
 ```{r}
 #| output: asis
-
-vars_to_exclude <- c( response, "id" )
-nvars              <- nvars[!nvars %in% vars_to_exclude]
-
 
 for (var in nvars){
 
@@ -200,31 +217,62 @@ corrplot(df_cor, order = 'hclust', addrect = 5)
 
 # 3. Model Training {-}
 
-## 3.1. Training and testing sets {-}
+## 3.1. Data preparation {-}
 
 ```{r}
+# Convert character variables to factors and then remove unused factor levels
+predictors_to_exclude <- c(response, "id", "col_18", "col_19")
+cvars  <- cvars[! cvars %in% predictors_to_exclude]
+
+df <- df %>%
+  mutate(across(all_of(cvars), ~ if (is.character(.)) as.factor(.) else .)) %>%
+  mutate(across(all_of(cvars), droplevels))
+
+# Formula to create dummies
+dummy_formula <- formula(paste0(" ~ ", paste(cvars, collapse = " + "), " - 1" ) )
+
+# Convert categorical variables to dummy variables
+dummy_vars <- model.matrix(dummy_formula, data = df)
+
 # Split the data into a training set (70%) and a test set (30%)
 
 # Set a seed to reproduce the results
 set.seed(2000)
 
 # Sample Indexes
-indexes = sample(1:nrow(df), size = round(0.3 * nrow(df)))
+indexes <- sample(1:nrow(df), size = round(0.3 * nrow(df)))
 
 # Split data
-df_train = df[-indexes, ]
-df_test  = df[ indexes, ]
+df_ready    <- cbind(df[c(response, nvars)], dummy_vars)
+df_to_train <- df_ready[-indexes,]
+df_to_test  <- df_ready[ indexes,]
+
+# Standardize numeric variables in the train set
+numeric_vars_std <- scale(df_to_train[, nvars])
+
+# Save means and standard deviations
+df_standardization <- data.frame(
+  variable = colnames(numeric_vars_std),
+  mean     = attr(numeric_vars_std, "scaled:center"),
+  sd       = attr(numeric_vars_std, "scaled:scale")
+)
+write.csv(df_standardization, file = file.path(file_path, "features_std.csv"),  row.names = FALSE)
+
+# Standardize numeric variables in the test set
+numeric_vars_test_std <- scale(df_to_test[, nvars], center = df_standardization$mean, scale = df_standardization$sd)
+
+# Prepare train and test sets with standarized numeric variables
+df_train <- cbind(df_to_train[, !colnames(df_to_train) %in% nvars], numeric_vars_std)
+df_test  <- cbind(df_to_test[, !colnames(df_to_test) %in% nvars], numeric_vars_test_std)
+
 
 # Predictors to exclude
-predictors_to_exclude <- c(response, "id", "col_18", "col_19")
-predictors            <- colnames(df)[! colnames(df) %in% predictors_to_exclude]
+predictors  <- colnames(df_train)[! colnames(df_train) %in% predictors_to_exclude]
 
 # Model formula to analyze the renponse variable with all the predictors
 model_formula <- formula(paste0(response, " ~ ", paste(predictors, collapse = " + ") ) )
 
 # Evaluation Metrics
-#' We create a function to calculate validation metrics
-
 calculate_metrics <- function(name = "model", y_real, y_prob, cutoff = 0.5 ) {
   # Root Mean Squared Error (RMSE)
   rmse_value <- rmse(y_real, y_prob)
@@ -273,19 +321,15 @@ prop_df_train       <- prop.table(table(df_train[response]))[2]
 
 ```
 
-## 3.2. Training models {-}
+## 3.2. Logistic Regression {-}
+
+A stepwise logistic regression is fitted.
 
 ```{r}
 #| output: asis
 
-cat(paste0("\n### Logistic Regression.\n"))
-cat(paste0("\n A stepped wise logistic regression is fitted.\n"))
-
 #' Full model
 rl_full <- glm(model_formula, family = binomial(link = 'logit'), data = df_train)
-
-kable(tidy(rl_full))
-
 
 #' Model with only the intercept
 rl_intercepto <- glm(response ~ 1, family = binomial(link = 'logit'), data = df_train)
@@ -296,6 +340,7 @@ fit_rl <- step(
   direction = "both", # direction can be "both", "forward", "backward"
   trace = 0
 ) 
+cat(paste0("\n### Stepwise Logistic Regression Coefficients.\n"))
 kable(tidy(fit_rl))
 
 
@@ -316,13 +361,12 @@ performance_models <- rbind(
 
 knitr::kable(performance_models, digits = 3)
 
+```
 
-cat(paste0("\n### Random Forest.\n"))
+## 3.3. Random Forest {-}
 
 
-#'  
-#' ## Random Forest
-#' 
+```{r}
 
 nt = 300
 df_train[[response]] <- as.factor(df_train[[response]])
@@ -350,10 +394,239 @@ performance_models <- rbind(
   performance_rf
 )
 
+
+
+```
+
+## 3.4. Cooperative Learning {-}
+
+
+
+```{r}
+library(stringr)
+#' ### Split data in the views.
+groups2 <- data.frame(feature = nvars) %>%
+  mutate(prefix = str_sub(nvars, start = 1, end = str_locate(nvars, "_")[, 1] - 1))
+groups2
+```
+
+
+
+```{r}
+library(stringr)
+#' ### Split data in the views.
+groups <- data.frame(feature = nvars) %>%
+  mutate(prefix = str_sub(nvars, start = 1, end = str_locate(nvars, "_")[, 1] - 1))
+
+#' Group the views with a single feature
+groups <- groups %>% 
+  mutate(
+    prefix = case_when(
+      prefix == "card"   |  prefix == "bin"  ~ "bin_card",
+      prefix == "growth" |  prefix == "fp"   ~ "fp_growth",
+      prefix == "vfccs"  |  prefix == "vtwc" ~ "vfccs_vtwc",
+      prefix == "tcfp"   |  prefix == "ti"   ~ "tcfp_ti",
+      TRUE ~ prefix
+  ))
+
+sum(table(groups$prefix))
+
+#' #### Importance (RF 100 features) by view
+
+kable(
+  merge(groups, importance, by.y = "variable", by.x = "feature") %>% 
+  group_by(prefix) %>% 
+  summarise(
+    n = n(),
+    total = sum(MeanDecreaseGini),
+    mean  = mean(MeanDecreaseGini)
+  ) %>% 
+  mutate(
+    index = row_number()
+  ) %>% 
+  arrange(-total)
+)
+
+groups$feature[groups$prefix == "ctx"]
+groups$feature[groups$prefix == "anch"]
+
+unique(groups$prefix)
+for (group in unique(groups$prefix)) {
+  # Vectors with the features of each group
+  assign(group, groups$feature[groups$prefix == group])
+  # Data set of each group
+  index = which(group == unique(groups$prefix))
+  assign(paste0("x", index), as.matrix(dfToModelStd[, get(group)]))
+}
+
+for (group in unique(groups$prefix)) {
+  # Data set of each group
+  index = which(group == unique(groups$prefix))
+  assign(paste0("test_x", index), as.matrix(dfToTestStd[, get(group)]))
+}
+
+
+#'
+#'
+#' ## CoopLearning - Model 1, with only 10 views (44 features)
+#' 
+#' 
+
+#' Create a folder for the model
+rho        <- 0.5
+n_groups   <- length(unique(groups$prefix))
+n_vars     <- sum(table(groups$prefix)[1:10]) 
+n_vars     <- 44
+model_name <- paste("CoopLearning", rho, n_groups, n_vars, sep = "_")
+
+#' Create the folder, if it does not exist
+dir.create(file.path(models_path, model_name), showWarnings = FALSE)
+
+#' Define the response
+y = dfToModel$is_fraud
+
+# Check memory limit
+rlimit_as(1e13)  # increases to ~12GB
+# You can also check the memory with this: rlimit_all()
+# Clean environment
+# rm(list = c("df", "dfToModel", "dfToModelStd", "dfToTest"))
+# rm(list = c("fit_coop"))
+# gc()
+
+if (!file.exists(file.path(models_path, model_name, "predictions.csv"))) {
+  
+  # Fit model
+  start_time <- Sys.time()
+  fit_coop = cv.multiview(
+    list(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10), # , x11, x12, x13, x14, x15, x16, x17),
+    y, 
+    family       = binomial(), 
+    type.measure = "deviance", 
+    nfolds       = 5,
+    rho          = rho,
+    trace.it     = TRUE
+  )
+  
+  finish_time <- Sys.time()
+  coop_learning_time <- difftime(finish_time, start_time, units = "sec") 
+  
+  # Lasso penalty parameter
+  reg <- fit_coop$lambda.min
+  
+  #' Calculate predictions
+  pred_multiview <- predict(
+    fit_coop, 
+    newx = list(test_x1, test_x2, test_x3, test_x4, test_x5, test_x6, test_x7, test_x8, test_x9, test_x10), 
+    s = reg, type = "response"
+  )
+  
+  dfToKPIs <- data.frame(dfToTest[, c("is_fraud", "execution_id")], pred_multiview)
+  
+  #' Calculate the metrics
+  kpis <- summariseKpiBinaryResponse(
+    name           = model_name,
+    adjustedModel  = cvfit,
+    dfTest         = dfToKPIs,
+    response       = response,
+    confusion      = TRUE,
+    estimated_prob = "s1",
+    prob_threshold = 0.09,
+    sens_spec      = TRUE,
+    subsampling_prop = 0.1
+  )
+  
+  #' Save the model object
+  saveRDS(fit_coop, file = file.path(models_path, model_name, "model_object.rds"))
+  #' Save execution time
+  write.csv(coop_learning_time, file = file.path(models_path, model_name, "execution_time.csv"))
+  #' Save predictions
+  write.csv(dfToKPIs, file = file.path(models_path, model_name, "predictions.csv"))
+  #' Save kpis
+  write.csv(kpis, file = file.path(models_path, model_name, "kpis.csv"))
+} else {
+  # Read risk, metrics, and importance
+  dfPredictions        <- read.csv(file = file.path(models_path, model_name, "predictions.csv")) %>% 
+    select(-X)
+  kpis                 <- read.csv(file = file.path(models_path, model_name, "kpis.csv"))[, -1]
+  fit_coop             <- readRDS(file = file.path(models_path, model_name, "model_object.rds")) 
+  coop_learning_time   <- read.csv(file = file.path(models_path, model_name, "execution_time.csv"))[, 2] 
+}
+
+#' #### Model: **`r paste0(model_name)`**.
+
+#' 
+#' 
+#' `r n_groups` groups of variables were created but only the
+#' * 10 groups (including a total of `r n_vars` variables) were used because when 
+#' * trying to use all groups there were memory RAM issues.
+#' 
+#' The execution time was `r round(coop_learning_time)` seconds, that is,
+#' * `r round(coop_learning_time/3600, 2)` hours.
+#' 
+#' 
+
+
+#' #### Adjusted coefficients
+coef(fit_coop, s = "lambda.min")
+
+#' #### Kpis
+kable(kpis, digits = 3)
+
+# Save KPIs
+comparisonKPIs <- rbind(comparisonKPIs, kpis)
+
+
+#' #### Fraud distribution according to predictions. Model: **`r paste0(model_name)`**.
+dfPredictions$response_ <- dfPredictions$is_fraud
+
+describeNumericAndTwoDichotomous(
+  data             = dfPredictions, 
+  var              = "s1", 
+  response         = "is_fraud",
+  response2        = "response_",
+  filter_outliers  = FALSE,
+  plot             = TRUE,
+  bar_color        = "#00bbfe", # 0b0080
+  line1_color      = "#fff159", 
+  line2_color      = "#fff159", 
+  row_names        = "the transactions",
+  save_plots       = FALSE,
+  n_intervals      = 30
+)
+
+
+
+#'
+#'
+#' ## CoopLearning - Model 2, with 7 views (56 features)
+#' 
+#' 
+
+#' Create a folder for the model
+rho        <- 1.5
+n_groups   <- length(unique(groups$prefix)[11:17])
+n_vars     <- sum(table(groups$prefix)[11:17])
+n_vars     <- 56
+model_name <- paste("CoopLearning", rho, n_groups, n_vars, sep = "_")
+
+#' Create the folder, if it does not exist
+dir.create(file.path(models_path, model_name), showWarnings = FALSE)
+
+if (!file.exists(file.path(models_path, model_name, "predictions.csv")))
+
+
+
+```
+
+
+
+# 4. Model Comparison {-}
+
+
+
+```{r}
+
 knitr::kable(performance_models, digits = 3)
 
-
-
-cat(paste0("\n### Cooperative Learning.\n"))
 
 ```
