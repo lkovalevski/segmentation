@@ -704,3 +704,46 @@ describeNumericAndBinaryResponse <- function(
 }  
 
 
+# Evaluation Metrics
+calculate_metrics <- function(name = "model", y_real, y_prob, cutoff = 0.5 ) {
+  # Root Mean Squared Error (RMSE)
+  rmse_value <- rmse(y_real, y_prob)
+  
+  # Area Under the Curve (AUC)
+  roc_obj   <- roc(response = y_real, predictor = y_prob)
+  auc_value <- roc_obj$auc
+  
+  # Lift for the top 10% of probabilities
+  n_top_5       <- ceiling(0.05 * length(y_prob))
+  top_5_indices <- order(y_prob, decreasing = TRUE)[1:n_top_5]
+  lift_value    <- mean(y_real[top_5_indices]) / mean(y_real)
+  
+  # Binarized predictions according to the cutoff point
+  y_pred <- ifelse(y_prob >= cutoff, 1, 0)
+  
+  # Confusion matrix
+  confusion_matrix <- table(y_real, y_pred)
+  
+  # Calculation of metrics
+  accuracy    <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+  recall      <- confusion_matrix[2, 2] / sum(confusion_matrix[2, ])
+  precision   <- confusion_matrix[2, 2] / sum(confusion_matrix[, 2])
+  specificity <- confusion_matrix[1, 1] / sum(confusion_matrix[1, ])
+  f1_score    <- 2 * ((precision * recall) / (precision + recall))
+  
+  # Create a data frame with the metrics
+  metrics <- data.frame(
+    Model       = name,
+    RMSE        = rmse_value,
+    AUC         = auc_value,
+    Lift_5      = lift_value,
+    Accuracy    = accuracy,
+    Recall      = recall,
+    Precision   = precision,
+    Specificity = specificity,
+    F1_Score    = f1_score
+  )
+  
+  return(metrics)
+}
+

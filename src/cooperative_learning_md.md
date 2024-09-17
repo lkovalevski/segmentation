@@ -14,8 +14,11 @@ Leandro Kovalevski
   - [2.5. Matrix correlation of quantitative
     predictors](#matrix-correlation-of-quantitative-predictors)
 - [3. Model Training](#model-training)
-  - [3.1. Training and testing sets](#training-and-testing-sets)
-  - [3.2. Training models](#training-models)
+  - [3.1. Data preparation](#data-preparation)
+  - [3.2. Stepwise Logistic Regression](#stepwise-logistic-regression)
+  - [3.3. Random Forest](#random-forest)
+  - [3.4. Cooperative Learning Models](#cooperative-learning-models)
+- [4. Models Comparison](#models-comparison)
 
 # Executive summary
 
@@ -23,19 +26,22 @@ Leandro Kovalevski
   (CUITs) is analyzed. Past financial behavior is used to predict
   default. The percent of default in the dataset is 9.6%.
 - Variable distributions and associations with the response are
-  presented.
+  summarized.
 - There is a clear (marginal) association between default and some
   variables (‘col_3’, ‘col_2’, ‘col_6’, ‘col_8’, ‘col_17’, ‘col_20’,
   ‘col_21’, ‘col_22’, ‘col_2’ and ‘col_26’) )
 - The dataset was divided in training and testing sets in a 70-30 ratio.
 - The Cooperative Learning model performance was compared with a
-  Logistic Regression model performance and a Random Forest model
-  performance.
-- …
-- …
-- to be completed..
-- …
-- …
+  Stepwise Logistic Regression model performance and a Random Forest
+  model performance according to RMSE, AUC, and Lift 5%. Also a
+  Accuracy, Recall, Precision and F1 Score were calculate for all models
+  using the proportion of events in the training set as the probability
+  threshold
+- Different Cooperative Learning models were fitted varying the penalty
+  parameter $\rho$.
+- The best performance of Cooperative Learning models was using a value
+  of $\rho$ equal to 0.7, but Stepwise Logistic Regression outperformed
+  all models on RMSE, AUC, and Lift 5%.
 
 # Settings
 
@@ -55,22 +61,33 @@ source(here::here("src", "utils.R"), encoding = "UTF-8")
 
 #' Cargar las librerías necesarias
 loadPackages(c(
+  # Data Preparation
   "here"
-  , "multiview", "scales", "dplyr", "doBy", "moments",
-  "gains", "ROCR", "skimr", "moments", "corrplot"
+  , "dplyr"
   # Stats & Metrics
   , "pROC"
   , "Metrics"
+  ,"gains"
+  , "ROCR"
+  , "skimr"
+  , "scales"
+  , "doBy"
+  , "moments"
   # Machine Learning
   , "randomForest"
+  , "multiview"
   # Visualization
   , "ggplot2"
+  , "corrplot"
   , "knitr"
   , "broom"
   ))
 
 #' Set data path
 file_path <- here::here("data", "ready")
+
+#' Set models path
+models_path <- here::here("results", "models")
 
 
 
@@ -79,8 +96,17 @@ if( !exists("file_name") ){
   file_name <- "df_bcra.rds"
 }
 
-#' read data
+#' Data group (or views) name
+group_file_name <- "groups.csv"
+
+#' Read dataset
 df <- readRDS(file.path(file_path, file_name))
+
+#' Read dataset
+groups <- read.csv2(file.path(file_path, group_file_name))
+
+#' Define the response
+response <- "response"
 ```
 
 </details>
@@ -190,8 +216,6 @@ the following values:
 <summary>Show the code</summary>
 
 ``` r
-response <- "response"
-
 cat(paste0("\n### Response variabe: **", response, "**.\n"))
 ```
 
@@ -259,6 +283,12 @@ nvars <- names(df)[(sapply(X = df, FUN = class)) %in%
                      c("integer", "numeric", "double") ]
 cvars <- names(df)[(sapply(X = df, FUN = class)) %in% 
                      c("character", "factor", "logical", "text") ]
+
+#' Delete unuseful variables
+vars_to_exclude <- c( response, "id" )
+nvars              <- nvars[!nvars %in% vars_to_exclude]
+
+
 
 for (var in cvars){
   
@@ -420,10 +450,6 @@ next highest percentage is for: ‘*3*’, with: 40.2% (Table 2.3.6).
 <summary>Show the code</summary>
 
 ``` r
-vars_to_exclude <- c( response, "id" )
-nvars              <- nvars[!nvars %in% vars_to_exclude]
-
-
 for (var in nvars){
 
   describeNumericAndBinaryResponse(
@@ -1025,75 +1051,63 @@ corrplot(df_cor, order = 'hclust', addrect = 5)
 
 # 3. Model Training
 
-## 3.1. Training and testing sets
+## 3.1. Data preparation
 
 <details>
 <summary>Show the code</summary>
 
 ``` r
+# Convert character variables to factors and then remove unused factor levels
+predictors_to_exclude <- c(response, "id", "col_18", "col_19")
+cvars  <- cvars[! cvars %in% predictors_to_exclude]
+
+df <- df %>%
+  mutate(across(all_of(cvars), ~ if (is.character(.)) as.factor(.) else .)) %>%
+  mutate(across(all_of(cvars), droplevels))
+
+# Formula to create dummies
+dummy_formula <- formula(paste0(" ~ ", paste(cvars, collapse = " + "), " - 1" ) )
+
+# Convert categorical variables to dummy variables
+dummy_vars <- model.matrix(dummy_formula, data = df)
+
 # Split the data into a training set (70%) and a test set (30%)
 
 # Set a seed to reproduce the results
 set.seed(2000)
 
 # Sample Indexes
-indexes = sample(1:nrow(df), size = round(0.3 * nrow(df)))
+indexes <- sample(1:nrow(df), size = round(0.3 * nrow(df)))
 
 # Split data
-df_train = df[-indexes, ]
-df_test  = df[ indexes, ]
+df_ready    <- cbind(df[c(response, nvars)], dummy_vars)
+df_to_train <- df_ready[-indexes,]
+df_to_test  <- df_ready[ indexes,]
+
+# Standardize numeric variables in the train set
+numeric_vars_std <- scale(df_to_train[, nvars])
+
+# Save means and standard deviations
+df_standardization <- data.frame(
+  variable = colnames(numeric_vars_std),
+  mean     = attr(numeric_vars_std, "scaled:center"),
+  sd       = attr(numeric_vars_std, "scaled:scale")
+)
+write.csv(df_standardization, file = file.path(file_path, "features_std.csv"),  row.names = FALSE)
+
+# Standardize numeric variables in the test set
+numeric_vars_test_std <- scale(df_to_test[, nvars], center = df_standardization$mean, scale = df_standardization$sd)
+
+# Prepare train and test sets with standarized numeric variables
+df_train <- cbind(df_to_train[, !colnames(df_to_train) %in% nvars], numeric_vars_std)
+df_test  <- cbind(df_to_test[, !colnames(df_to_test) %in% nvars], numeric_vars_test_std)
+
 
 # Predictors to exclude
-predictors_to_exclude <- c(response, "id", "col_18", "col_19")
-predictors            <- colnames(df)[! colnames(df) %in% predictors_to_exclude]
+predictors  <- colnames(df_train)[! colnames(df_train) %in% predictors_to_exclude]
 
 # Model formula to analyze the renponse variable with all the predictors
 model_formula <- formula(paste0(response, " ~ ", paste(predictors, collapse = " + ") ) )
-
-# Evaluation Metrics
-#' We create a function to calculate validation metrics
-
-calculate_metrics <- function(name = "model", y_real, y_prob, cutoff = 0.5 ) {
-  # Root Mean Squared Error (RMSE)
-  rmse_value <- rmse(y_real, y_prob)
-  
-  # Area Under the Curve (AUC)
-  roc_obj   <- roc(response = y_real, predictor = y_prob)
-  auc_value <- roc_obj$auc
-  
-  # Lift for the top 10% of probabilities
-  n_top_5       <- ceiling(0.05 * length(y_prob))
-  top_5_indices <- order(y_prob, decreasing = TRUE)[1:n_top_5]
-  lift_value    <- mean(y_real[top_5_indices]) / mean(y_real)
-  
-  # Binarized predictions according to the cutoff point
-  y_pred <- ifelse(y_prob >= cutoff, 1, 0)
-  
-  # Confusion matrix
-  confusion_matrix <- table(y_real, y_pred)
-  
-  # Calculation of metrics
-  accuracy    <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
-  recall      <- confusion_matrix[2, 2] / sum(confusion_matrix[2, ])
-  precision   <- confusion_matrix[2, 2] / sum(confusion_matrix[, 2])
-  specificity <- confusion_matrix[1, 1] / sum(confusion_matrix[1, ])
-  f1_score    <- 2 * ((precision * recall) / (precision + recall))
-  
-  # Create a data frame with the metrics
-  metrics <- data.frame(
-    Model       = name,
-    RMSE        = rmse_value,
-    AUC         = auc_value,
-    Lift_5      = lift_value,
-    Accuracy    = accuracy,
-    Recall      = recall,
-    Precision   = precision,
-    Specificity = specificity,
-    F1_Score    = f1_score
-  )
-  
-  return(metrics)
-}
 
 
 performance_models  <- data.frame()
@@ -1102,36 +1116,16 @@ prop_df_train       <- prop.table(table(df_train[response]))[2]
 
 </details>
 
-## 3.2. Training models
+## 3.2. Stepwise Logistic Regression
 
-<details>
-<summary>Show the code</summary>
-
-``` r
-cat(paste0("\n### Logistic Regression.\n"))
-```
-
-</details>
-
-### Logistic Regression.
-
-<details>
-<summary>Show the code</summary>
-
-``` r
-cat(paste0("\n A stepped wise logistic regression is fitted.\n"))
-```
-
-</details>
-
-A stepped wise logistic regression is fitted.
+A stepwise logistic regression is fitted.
 
 <details>
 <summary>Show the code</summary>
 
 ``` r
 #' Full model
-rl_full <- glm(model_formula, family = binomial(link = 'logit'), data = df_train)
+rl_full <- glm(model_formula, family = binomial(link = 'logit'), data = df_train, control = glm.control(epsilon = 1e-8, maxit = 50))
 ```
 
 </details>
@@ -1142,59 +1136,13 @@ rl_full <- glm(model_formula, family = binomial(link = 'logit'), data = df_train
 <summary>Show the code</summary>
 
 ``` r
-kable(tidy(rl_full))
-```
-
-</details>
-
-<div class="cell-output-display">
-
-| term        |   estimate | std.error |  statistic |   p.value |
-|:------------|-----------:|----------:|-----------:|----------:|
-| (Intercept) | -2.1548445 | 0.5656791 | -3.8093058 | 0.0001394 |
-| col_123     | -0.0297868 | 0.1066323 | -0.2793412 | 0.7799830 |
-| col_124     | -1.0538690 | 0.6119082 | -1.7222666 | 0.0850212 |
-| col_127     | -0.0693552 | 0.0625855 | -1.1081664 | 0.2677900 |
-| col_2       |  0.1805211 | 0.0282530 |  6.3894470 | 0.0000000 |
-| col_3       |  0.0010621 | 0.0001595 |  6.6585931 | 0.0000000 |
-| col_4       |  0.0011719 | 0.0006727 |  1.7421205 | 0.0814874 |
-| col_5       | -0.0003444 | 0.0004308 | -0.7995341 | 0.4239808 |
-| col_62      |  1.3285667 | 0.1082214 | 12.2763755 | 0.0000000 |
-| col_7       | -0.8913568 | 1.0002635 | -0.8911219 | 0.3728638 |
-| col_81      |  0.2644806 | 0.7025118 |  0.3764785 | 0.7065612 |
-| col_9       |         NA |        NA |         NA |        NA |
-| col_10      | -0.1421551 | 0.0255459 | -5.5646917 | 0.0000000 |
-| col_11      | -0.0047004 | 0.0042673 | -1.1014772 | 0.2706890 |
-| col_12      |  0.0037369 | 0.0042652 |  0.8761422 | 0.3809527 |
-| col_13      |  0.0079600 | 0.0049234 |  1.6167581 | 0.1059305 |
-| col_14      | -0.0003062 | 0.0006363 | -0.4812144 | 0.6303641 |
-| col_15      |         NA |        NA |         NA |        NA |
-| col_16      |         NA |        NA |         NA |        NA |
-| col_172     |  1.4800915 | 0.1083553 | 13.6596133 | 0.0000000 |
-| col_173     |  1.6877773 | 0.1874728 |  9.0027861 | 0.0000000 |
-| col_174     |  1.4919251 | 0.2693728 |  5.5385136 | 0.0000000 |
-| col_175     |  1.8797428 | 0.2671755 |  7.0356107 | 0.0000000 |
-| col_20      | -0.4169627 | 0.5481793 | -0.7606320 | 0.4468769 |
-| col_21      |  0.9764551 | 0.7452039 |  1.3103193 | 0.1900879 |
-| col_22      |         NA |        NA |         NA |        NA |
-| col_23      |  0.6514127 | 1.1882639 |  0.5482054 | 0.5835509 |
-| col_24      | -0.6773908 | 0.8399731 | -0.8064435 | 0.4199872 |
-| col_25      | -0.0235724 | 0.4086064 | -0.0576898 | 0.9539957 |
-| col_26      |  1.3083012 | 0.6183329 |  2.1158526 | 0.0343573 |
-
-</div>
-
-<details>
-<summary>Show the code</summary>
-
-``` r
 #' Model with only the intercept
-rl_intercepto <- glm(response ~ 1, family = binomial(link = 'logit'), data = df_train)
+rl_intercepto <- glm(response ~ 1, family = binomial(link = 'logit'), data = df_train, control = glm.control(epsilon = 1e-8, maxit = 50))
 
 fit_rl <- step(
   rl_intercepto, 
   scope = list(lower = rl_intercepto, upper = rl_full), 
-  direction = "both", # direction can be "both", "forward", "backward"
+  direction = "both",
   trace = 0
 ) 
 ```
@@ -1235,6 +1183,88 @@ fit_rl <- step(
     Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
     Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
     Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n### Stepwise Logistic Regression Coefficients.\n"))
+```
+
+</details>
+
+### Stepwise Logistic Regression Coefficients.
 
 <details>
 <summary>Show the code</summary>
@@ -1247,21 +1277,22 @@ kable(tidy(fit_rl))
 
 <div class="cell-output-display">
 
-| term        |   estimate | std.error | statistic |   p.value |
-|:------------|-----------:|----------:|----------:|----------:|
-| (Intercept) | -1.7132509 | 0.3539160 | -4.840841 | 0.0000013 |
-| col_172     |  1.4231110 | 0.1022302 | 13.920649 | 0.0000000 |
-| col_173     |  1.7344084 | 0.1819099 |  9.534436 | 0.0000000 |
-| col_174     |  1.7221783 | 0.2226334 |  7.735488 | 0.0000000 |
-| col_175     |  2.1445407 | 0.2050958 | 10.456290 | 0.0000000 |
-| col_62      |  1.3169038 | 0.1057784 | 12.449646 | 0.0000000 |
-| col_3       |  0.0010587 | 0.0001587 |  6.672780 | 0.0000000 |
-| col_25      |  0.5022742 | 0.3194120 |  1.572496 | 0.1158355 |
-| col_2       |  0.1833378 | 0.0264695 |  6.926373 | 0.0000000 |
-| col_10      | -0.1417948 | 0.0253756 | -5.587841 | 0.0000000 |
-| col_23      | -0.8953402 | 0.2321648 | -3.856486 | 0.0001150 |
-| col_20      | -0.8870267 | 0.3392469 | -2.614693 | 0.0089308 |
-| col_13      |  0.0036957 | 0.0018134 |  2.037990 | 0.0415509 |
+| term        |   estimate | std.error |  statistic |   p.value |
+|:------------|-----------:|----------:|-----------:|----------:|
+| (Intercept) | -2.9189541 | 0.0404960 | -72.080121 | 0.0000000 |
+| col_62      |  1.3362643 | 0.1054282 |  12.674642 | 0.0000000 |
+| col_172     |  1.4712505 | 0.0959083 |  15.340181 | 0.0000000 |
+| col_3       |  0.1770373 | 0.0264783 |   6.686127 | 0.0000000 |
+| col_26      |  0.1364188 | 0.0396999 |   3.436251 | 0.0005898 |
+| col_173     |  1.6636511 | 0.1772915 |   9.383705 | 0.0000000 |
+| col_2       |  0.2023306 | 0.0277996 |   7.278187 | 0.0000000 |
+| col_10      | -0.1649019 | 0.0294972 |  -5.590419 | 0.0000000 |
+| col_175     |  1.8858509 | 0.2645310 |   7.129035 | 0.0000000 |
+| col_174     |  1.4753011 | 0.2661482 |   5.543156 | 0.0000000 |
+| col_23      | -0.1532474 | 0.0387788 |  -3.951832 | 0.0000776 |
+| col_21      |  0.1007449 | 0.0264385 |   3.810536 | 0.0001387 |
+| col_13      |  0.3185304 | 0.1555422 |   2.047872 | 0.0405726 |
+| col_124     | -1.0150503 | 0.6111045 |  -1.661009 | 0.0967116 |
 
 </div>
 
@@ -1290,21 +1321,27 @@ performance_rl <- calculate_metrics(
 <summary>Show the code</summary>
 
 ``` r
-performance_models <- rbind(
-  performance_models, 
-  performance_rl
-)
+cat(paste0("\n### Logistic Regression Performance Metrics\n"))
+```
 
-knitr::kable(performance_models, digits = 3)
+</details>
+
+### Logistic Regression Performance Metrics
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+knitr::kable(performance_rl, digits = 3)
 ```
 
 </details>
 
 <div class="cell-output-display">
 
-| Model   |  RMSE |       AUC | Lift_5 | Accuracy | Recall | Precision | Specificity | F1_Score |
-|:--------|------:|----------:|-------:|---------:|-------:|----------:|------------:|---------:|
-| Log Reg | 0.259 | 0.8050348 |  6.271 |    0.866 |  0.599 |     0.372 |       0.894 |    0.459 |
+| Model   |  RMSE |      AUC | Lift_5 | Accuracy | Recall | Precision | Specificity | F1_Score |
+|:--------|------:|---------:|-------:|---------:|-------:|----------:|------------:|---------:|
+| Log Reg | 0.259 | 0.806188 |  6.301 |    0.864 |  0.598 |     0.367 |       0.892 |    0.455 |
 
 </div>
 
@@ -1312,22 +1349,21 @@ knitr::kable(performance_models, digits = 3)
 <summary>Show the code</summary>
 
 ``` r
-cat(paste0("\n### Random Forest.\n"))
+performance_models <- rbind(
+  performance_models, 
+  performance_rl
+)
 ```
 
 </details>
 
-### Random Forest.
+## 3.3. Random Forest
 
 <details>
 <summary>Show the code</summary>
 
 ``` r
-#'  
-#' ## Random Forest
-#' 
-
-nt = 300
+nt = 500
 df_train[[response]] <- as.factor(df_train[[response]])
 
 randomForest <- randomForest(
@@ -1352,7 +1388,49 @@ performance_rf <- calculate_metrics(
 </details>
 
     Setting levels: control = 0, case = 1
+
     Setting direction: controls < cases
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n"))
+```
+
+</details>
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n### Random Forest Performance Metrics\n"))
+```
+
+</details>
+
+
+    ### Random Forest Performance Metrics
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n"))
+```
+
+</details>
+<details>
+<summary>Show the code</summary>
+
+``` r
+knitr::kable(performance_rf, digits = 3)
+```
+
+</details>
+
+| Model                     |  RMSE |       AUC | Lift_5 | Accuracy | Recall | Precision | Specificity | F1_Score |
+|:--------------------------|------:|----------:|-------:|---------:|-------:|----------:|------------:|---------:|
+| Random Forest - ntree 500 | 0.262 | 0.7816235 |  6.124 |    0.862 |  0.586 |      0.36 |       0.891 |    0.446 |
 
 <details>
 <summary>Show the code</summary>
@@ -1362,28 +1440,797 @@ performance_models <- rbind(
   performance_models, 
   performance_rf
 )
-
-knitr::kable(performance_models, digits = 3)
 ```
 
 </details>
 
-<div class="cell-output-display">
-
-| Model                     |  RMSE |       AUC | Lift_5 | Accuracy | Recall | Precision | Specificity | F1_Score |
-|:--------------------------|------:|----------:|-------:|---------:|-------:|----------:|------------:|---------:|
-| Log Reg                   | 0.259 | 0.8050348 |  6.271 |    0.866 |  0.599 |     0.372 |       0.894 |    0.459 |
-| Random Forest - ntree 300 | 0.262 | 0.7828149 |  5.918 |    0.845 |  0.614 |     0.330 |       0.870 |    0.430 |
-
-</div>
+## 3.4. Cooperative Learning Models
 
 <details>
 <summary>Show the code</summary>
 
 ``` r
-cat(paste0("\n### Cooperative Learning.\n"))
+#' ### Split data in the views.
+groups <- groups %>%
+  mutate(prefix = paste0("g", group))
+```
+
+</details>
+<details>
+<summary>Show the code</summary>
+
+``` r
+# Create vector lists of variables that belong to each group 
+for (group in unique(groups$prefix)) {
+  # Vectors with the features of each group
+  assign(group, groups$feature[groups$prefix == group])
+  # Data set of each group
+  index <- which(group == unique(groups$prefix))
+  assign(paste0("x", index), as.matrix(df_train[, get(group)]))
+}
+
+for (group in unique(groups$prefix)) {
+  # Data set of each group
+  index <- which(group == unique(groups$prefix))
+  assign(paste0("test_x", index), as.matrix(df_test[, get(group)]))
+}
 ```
 
 </details>
 
-### Cooperative Learning.
+### 3.4.1 Cooperative Learning with penalty parameter ($\rho$) equal to 0.5
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+#' Create a folder for the model
+rho        <- 0.5
+n_groups   <- length(unique(groups$prefix))
+n_vars     <- sum(table(groups$prefix)) 
+model_name <- paste("CoopLearn_", "r", rho, "_g", n_groups, "_p", n_vars, sep = "")
+
+#' Create the folder, if it does not exist
+dir.create(file.path(models_path, model_name), showWarnings = FALSE)
+
+#' Define the response
+y      <- df_train[, response]
+y_test <- df_test[, response]
+
+
+if (!file.exists(file.path(models_path, model_name, "predictions.csv"))) {
+  
+  # Fit model
+  start_time <- Sys.time()
+  fit_coop = cv.multiview(
+    list(x1, x2, x3, x4, x5, x6), 
+    y, 
+    family       = binomial(), 
+    type.measure = "deviance", 
+    nfolds       = 3,
+    rho          = rho,
+    trace.it     = TRUE
+  )
+  
+  finish_time <- Sys.time()
+  coop_learning_time <- difftime(finish_time, start_time, units = "sec") 
+  
+  # Lasso penalty parameter
+  reg <- fit_coop$lambda.min
+  
+  #' Calculate predictions
+  pred_multiview <- predict(
+    fit_coop, 
+    newx = list(test_x1, test_x2, test_x3, test_x4, test_x5, test_x6), 
+    s = reg, type = "response"
+  )
+  
+  #' Calculate the metrics
+  performance_cl01 <- calculate_metrics(
+    name   = model_name,
+    y_real = y_test, 
+    y_prob = as.vector(pred_multiview),
+    cutoff = prop_df_train
+  )
+  
+  performance_models <- rbind(
+    performance_models, 
+    performance_cl01
+  )
+  
+  #' Save the model object
+  saveRDS(fit_coop, file = file.path(models_path, model_name, "model_object.rds"))
+  #' Save execution time
+  write.csv(coop_learning_time, file = file.path(models_path, model_name, "execution_time.csv"))
+  #' Save predictions
+  df_to_kpis <- data.frame(y_test, pred_multiview)
+  write.csv(df_to_kpis, file = file.path(models_path, model_name, "predictions.csv"))
+  #' Save kpis
+  write.csv(performance_cl01, file = file.path(models_path, model_name, "kpis.csv"))
+} else {
+  # Read risk, metrics, and importance
+  dfPredictions        <- read.csv(file = file.path(models_path, model_name, "predictions.csv")) %>% 
+    select(-X)
+  kpis                 <- read.csv(file = file.path(models_path, model_name, "kpis.csv"))[, -1]
+  fit_coop             <- readRDS(file = file.path(models_path, model_name, "model_object.rds")) 
+  coop_learning_time   <- read.csv(file = file.path(models_path, model_name, "execution_time.csv"))[, 2] 
+  
+  
+  performance_models <- rbind(
+    performance_models, 
+    kpis
+  )
+  
+}
+
+#' #### Model: **`r paste0(model_name)`**.
+
+
+#' #### Adjusted coefficients
+cat(paste0("\n"))
+```
+
+</details>
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n### Coefficients by view\n"))
+```
+
+</details>
+
+
+    ### Coefficients by view
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n"))
+```
+
+</details>
+<details>
+<summary>Show the code</summary>
+
+``` r
+coef(fit_coop, s = "lambda.min")
+```
+
+</details>
+
+    31 x 1 sparse Matrix of class "dgCMatrix"
+                             s1
+    (Intercept)   -2.2696043097
+    View1:col_11   0.0263295836
+    View1:col_12  -0.0347556375
+    View1:col_4    0.0022621861
+    View1:col_15   0.0107289484
+    View2:col_13   0.0099089231
+    View2:col_5    0.0019060819
+    View2:col_14  -0.0060963747
+    View2:col_7   -0.0011020747
+    View2:col_23  -0.0062311867
+    View2:col_24   0.0049602479
+    View3:col_2    0.0150872761
+    View3:col_11  -0.0002934944
+    View4:col_16  -0.0008227085
+    View4:col_22   0.0021857725
+    View4:col_26   0.0330170292
+    View5:col_3    0.0049150149
+    View5:col_9    0.0310308626
+    View5:col_21  -0.0044436390
+    View5:col_25   0.0381043718
+    View5:col_20  -0.0055248814
+    View6:col_120  0.0012922967
+    View6:col_123  .           
+    View6:col_124 -0.0169444844
+    View6:col_127 -0.0008212166
+    View6:col_62   0.1630322239
+    View6:col_81  -0.0119235582
+    View6:col_172  0.0765576868
+    View6:col_173  0.1398903648
+    View6:col_174  0.1568649608
+    View6:col_175  0.1879236273
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+#' #### Kpis
+cat(paste0("\n"))
+```
+
+</details>
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n### Coop Learning Performance Metrics - $$\rho$$ = 0.5\n"))
+```
+
+</details>
+
+
+    ### Coop Learning Performance Metrics - $$
+    ho$$ = 0.5
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n"))
+```
+
+</details>
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n"))
+```
+
+</details>
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n### Coop Learning Performance Metrics - $$\\rho$$ = 0.5\n"))
+```
+
+</details>
+
+
+    ### Coop Learning Performance Metrics - $$\rho$$ = 0.5
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n"))
+```
+
+</details>
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n"))
+```
+
+</details>
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n### Coop Learning Performance Metrics - $\\rho$ = 0.5\n"))
+```
+
+</details>
+
+
+    ### Coop Learning Performance Metrics - $\rho$ = 0.5
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n"))
+```
+
+</details>
+<details>
+<summary>Show the code</summary>
+
+``` r
+knitr::kable(kpis, digits = 3)
+```
+
+</details>
+
+| Model                 |  RMSE |   AUC | Lift_5 | Accuracy | Recall | Precision | Specificity | F1_Score |
+|:----------------------|------:|------:|-------:|---------:|-------:|----------:|------------:|---------:|
+| CoopLearn_r0.5_g6_p30 | 0.286 | 0.801 |  6.212 |    0.871 |  0.588 |     0.384 |       0.901 |    0.464 |
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+#'
+#'
+#' ## CoopLearning - Model 1 rho = 0.7
+#' 
+#' 
+
+#' Create a folder for the model
+rho        <- 0.7
+n_groups   <- length(unique(groups$prefix))
+n_vars     <- sum(table(groups$prefix)) 
+model_name <- paste("CoopLearn_", "r", rho, "_g", n_groups, "_p", n_vars, sep = "")
+
+#' Create the folder, if it does not exist
+dir.create(file.path(models_path, model_name), showWarnings = FALSE)
+
+#' Define the response
+y      <- df_train[, response]
+y_test <- df_test[, response]
+
+
+if (!file.exists(file.path(models_path, model_name, "predictions.csv"))) {
+  
+  # Fit model
+  start_time <- Sys.time()
+  fit_coop = cv.multiview(
+    list(x1, x2, x3, x4, x5, x6), 
+    y, 
+    family       = binomial(), 
+    type.measure = "deviance", 
+    nfolds       = 3,
+    rho          = rho,
+    trace.it     = TRUE
+  )
+  
+  finish_time <- Sys.time()
+  coop_learning_time <- difftime(finish_time, start_time, units = "sec") 
+  
+  # Lasso penalty parameter
+  reg <- fit_coop$lambda.min
+  
+  #' Calculate predictions
+  pred_multiview <- predict(
+    fit_coop, 
+    newx = list(test_x1, test_x2, test_x3, test_x4, test_x5, test_x6), 
+    s = reg, type = "response"
+  )
+  
+  #' Calculate the metrics
+  performance_cl01 <- calculate_metrics(
+    name   = model_name,
+    y_real = y_test, 
+    y_prob = as.vector(pred_multiview),
+    cutoff = prop_df_train
+  )
+  
+  performance_models <- rbind(
+    performance_models, 
+    performance_cl01
+  )
+  
+  #' Save the model object
+  saveRDS(fit_coop, file = file.path(models_path, model_name, "model_object.rds"))
+  #' Save execution time
+  write.csv(coop_learning_time, file = file.path(models_path, model_name, "execution_time.csv"))
+  #' Save predictions
+  df_to_kpis <- data.frame(y_test, pred_multiview)
+  write.csv(df_to_kpis, file = file.path(models_path, model_name, "predictions.csv"))
+  #' Save kpis
+  write.csv(performance_cl01, file = file.path(models_path, model_name, "kpis.csv"))
+} else {
+  # Read risk, metrics, and importance
+  dfPredictions        <- read.csv(file = file.path(models_path, model_name, "predictions.csv")) %>% 
+    select(-X)
+  kpis                 <- read.csv(file = file.path(models_path, model_name, "kpis.csv"))[, -1]
+  fit_coop             <- readRDS(file = file.path(models_path, model_name, "model_object.rds")) 
+  coop_learning_time   <- read.csv(file = file.path(models_path, model_name, "execution_time.csv"))[, 2] 
+  
+  
+  performance_models <- rbind(
+    performance_models, 
+    kpis
+  )
+}
+
+
+
+#' #### Adjusted coefficients
+coef(fit_coop, s = "lambda.min")
+```
+
+</details>
+
+    31 x 1 sparse Matrix of class "dgCMatrix"
+                             s1
+    (Intercept)   -2.259814e+00
+    View1:col_11   1.694369e-02
+    View1:col_12  -2.593892e-02
+    View1:col_4    4.584922e-03
+    View1:col_15   7.899764e-03
+    View2:col_13   7.606791e-03
+    View2:col_5    1.321351e-03
+    View2:col_14  -4.402113e-03
+    View2:col_7   -6.639034e-04
+    View2:col_23  -4.683167e-03
+    View2:col_24   3.629822e-03
+    View3:col_2    1.108799e-02
+    View3:col_11  -4.141176e-05
+    View4:col_16  -5.760644e-04
+    View4:col_22   1.661771e-03
+    View4:col_26   2.492949e-02
+    View5:col_3    3.539407e-03
+    View5:col_9    2.301464e-02
+    View5:col_21  -3.991819e-03
+    View5:col_25   2.879402e-02
+    View5:col_20  -4.549918e-03
+    View6:col_120  9.518635e-04
+    View6:col_123  .           
+    View6:col_124 -1.216977e-02
+    View6:col_127 -5.682295e-04
+    View6:col_62   1.216469e-01
+    View6:col_81  -8.524972e-03
+    View6:col_172  5.603420e-02
+    View6:col_173  1.050638e-01
+    View6:col_174  1.196430e-01
+    View6:col_175  1.426151e-01
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+#' #### Kpis
+cat(paste0("\n"))
+```
+
+</details>
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n### Coop Learning Performance Metrics II\n"))
+```
+
+</details>
+
+
+    ### Coop Learning Performance Metrics II
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+cat(paste0("\n"))
+```
+
+</details>
+<details>
+<summary>Show the code</summary>
+
+``` r
+knitr::kable(kpis, digits = 3)
+```
+
+</details>
+
+| Model                 |  RMSE |   AUC | Lift_5 | Accuracy | Recall | Precision | Specificity | F1_Score |
+|:----------------------|------:|------:|-------:|---------:|-------:|----------:|------------:|---------:|
+| CoopLearn_r0.7_g6_p30 | 0.288 | 0.801 |  6.212 |    0.871 |  0.591 |     0.384 |       0.901 |    0.466 |
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+#'
+#'
+#' ## CoopLearning - Model 1 rho = 1
+#' 
+#' 
+
+#' Create a folder for the model
+rho        <- 1
+n_groups   <- length(unique(groups$prefix))
+n_vars     <- sum(table(groups$prefix)) 
+model_name <- paste("CoopLearn_", "r", rho, "_g", n_groups, "_p", n_vars, sep = "")
+
+#' Create the folder, if it does not exist
+dir.create(file.path(models_path, model_name), showWarnings = FALSE)
+
+#' Define the response
+y      <- df_train[, response]
+y_test <- df_test[, response]
+
+
+if (!file.exists(file.path(models_path, model_name, "predictions.csv"))) {
+  
+  # Fit model
+  start_time <- Sys.time()
+  fit_coop = cv.multiview(
+    list(x1, x2, x3, x4, x5, x6), 
+    y, 
+    family       = binomial(), 
+    type.measure = "deviance", 
+    nfolds       = 3,
+    rho          = rho,
+    trace.it     = TRUE
+  )
+  
+  finish_time <- Sys.time()
+  coop_learning_time <- difftime(finish_time, start_time, units = "sec") 
+  
+  # Lasso penalty parameter
+  reg <- fit_coop$lambda.min
+  
+  #' Calculate predictions
+  pred_multiview <- predict(
+    fit_coop, 
+    newx = list(test_x1, test_x2, test_x3, test_x4, test_x5, test_x6), 
+    s = reg, type = "response"
+  )
+  
+  #' Calculate the metrics
+  performance_cl01 <- calculate_metrics(
+    name   = model_name,
+    y_real = y_test, 
+    y_prob = as.vector(pred_multiview),
+    cutoff = prop_df_train
+  )
+  
+  performance_models <- rbind(
+    performance_models, 
+    performance_cl01
+  )
+  
+  #' Save the model object
+  saveRDS(fit_coop, file = file.path(models_path, model_name, "model_object.rds"))
+  #' Save execution time
+  write.csv(coop_learning_time, file = file.path(models_path, model_name, "execution_time.csv"))
+  #' Save predictions
+  df_to_kpis <- data.frame(y_test, pred_multiview)
+  write.csv(df_to_kpis, file = file.path(models_path, model_name, "predictions.csv"))
+  #' Save kpis
+  write.csv(performance_cl01, file = file.path(models_path, model_name, "kpis.csv"))
+} else {
+  # Read risk, metrics, and importance
+  dfPredictions        <- read.csv(file = file.path(models_path, model_name, "predictions.csv")) %>% 
+    select(-X)
+  kpis                 <- read.csv(file = file.path(models_path, model_name, "kpis.csv"))[, -1]
+  fit_coop             <- readRDS(file = file.path(models_path, model_name, "model_object.rds")) 
+  coop_learning_time   <- read.csv(file = file.path(models_path, model_name, "execution_time.csv"))[, 2] 
+  
+  
+performance_models <- rbind(
+  performance_models, 
+  kpis
+)
+}
+
+#' #### Model: **`r paste0(model_name)`**.
+
+
+#' #### Adjusted coefficients
+coef(fit_coop, s = "lambda.min")
+```
+
+</details>
+
+    31 x 1 sparse Matrix of class "dgCMatrix"
+                             s1
+    (Intercept)   -2.252792e+00
+    View1:col_11   1.462366e-02
+    View1:col_12  -1.927367e-02
+    View1:col_4    1.554493e-03
+    View1:col_15   5.662138e-03
+    View2:col_13   5.635841e-03
+    View2:col_5    8.103347e-04
+    View2:col_14  -3.030734e-03
+    View2:col_7   -4.125078e-04
+    View2:col_23  -3.321597e-03
+    View2:col_24   2.523802e-03
+    View3:col_2    7.939375e-03
+    View3:col_11   1.138378e-05
+    View4:col_16  -3.797012e-04
+    View4:col_22   1.211081e-03
+    View4:col_26   1.817631e-02
+    View5:col_3    2.488854e-03
+    View5:col_9    1.652470e-02
+    View5:col_21  -3.207081e-03
+    View5:col_25   2.100038e-02
+    View5:col_20  -3.485311e-03
+    View6:col_120  6.881043e-04
+    View6:col_123  .           
+    View6:col_124 -8.525049e-03
+    View6:col_127 -3.852118e-04
+    View6:col_62   8.774110e-02
+    View6:col_81  -5.978710e-03
+    View6:col_172  3.997117e-02
+    View6:col_173  7.629163e-02
+    View6:col_174  8.779214e-02
+    View6:col_175  1.042673e-01
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+#' #### Kpis
+cat(paste0("\n### Coop Learning Performance Metrics III\n"))
+```
+
+</details>
+
+
+    ### Coop Learning Performance Metrics III
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+knitr::kable(kpis, digits = 3)
+```
+
+</details>
+
+| Model               |  RMSE |   AUC | Lift_5 | Accuracy | Recall | Precision | Specificity | F1_Score |
+|:--------------------|------:|------:|-------:|---------:|-------:|----------:|------------:|---------:|
+| CoopLearn_r1_g6_p30 | 0.289 | 0.801 |  6.124 |    0.871 |  0.591 |     0.383 |         0.9 |    0.465 |
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+#'
+#'
+#' ## CoopLearning - Model 1 rho = 2
+#' 
+#' 
+
+#' Create a folder for the model
+rho        <- 2
+n_groups   <- length(unique(groups$prefix))
+n_vars     <- sum(table(groups$prefix)) 
+model_name <- paste("CoopLearn_", "r", rho, "_g", n_groups, "_p", n_vars, sep = "")
+
+#' Create the folder, if it does not exist
+dir.create(file.path(models_path, model_name), showWarnings = FALSE)
+
+#' Define the response
+y      <- df_train[, response]
+y_test <- df_test[, response]
+
+
+if (!file.exists(file.path(models_path, model_name, "predictions.csv"))) {
+  
+  # Fit model
+  start_time <- Sys.time()
+  fit_coop = cv.multiview(
+    list(x1, x2, x3, x4, x5, x6), 
+    y, 
+    family       = binomial(), 
+    type.measure = "deviance", 
+    nfolds       = 3,
+    rho          = rho,
+    trace.it     = TRUE
+  )
+  
+  finish_time <- Sys.time()
+  coop_learning_time <- difftime(finish_time, start_time, units = "sec") 
+  
+  # Lasso penalty parameter
+  reg <- fit_coop$lambda.min
+  
+  #' Calculate predictions
+  pred_multiview <- predict(
+    fit_coop, 
+    newx = list(test_x1, test_x2, test_x3, test_x4, test_x5, test_x6), 
+    s = reg, type = "response"
+  )
+  
+  #' Calculate the metrics
+  performance_cl01 <- calculate_metrics(
+    name   = model_name,
+    y_real = y_test, 
+    y_prob = as.vector(pred_multiview),
+    cutoff = prop_df_train
+  )
+  
+  performance_models <- rbind(
+    performance_models, 
+    performance_cl01
+  )
+  
+  #' Save the model object
+  saveRDS(fit_coop, file = file.path(models_path, model_name, "model_object.rds"))
+  #' Save execution time
+  write.csv(coop_learning_time, file = file.path(models_path, model_name, "execution_time.csv"))
+  #' Save predictions
+  df_to_kpis <- data.frame(y_test, pred_multiview)
+  write.csv(df_to_kpis, file = file.path(models_path, model_name, "predictions.csv"))
+  #' Save kpis
+  write.csv(performance_cl01, file = file.path(models_path, model_name, "kpis.csv"))
+} else {
+  # Read risk, metrics, and importance
+  dfPredictions        <- read.csv(file = file.path(models_path, model_name, "predictions.csv")) %>% 
+    select(-X)
+  kpis                 <- read.csv(file = file.path(models_path, model_name, "kpis.csv"))[, -1]
+  fit_coop             <- readRDS(file = file.path(models_path, model_name, "model_object.rds")) 
+  coop_learning_time   <- read.csv(file = file.path(models_path, model_name, "execution_time.csv"))[, 2] 
+  
+  performance_models <- rbind(
+    performance_models, 
+    kpis
+  )
+}
+
+#' #### Adjusted coefficients
+coef(fit_coop, s = "lambda.min")
+```
+
+</details>
+
+    31 x 1 sparse Matrix of class "dgCMatrix"
+                             s1
+    (Intercept)   -2.245179e+00
+    View1:col_11   6.949668e-03
+    View1:col_12  -9.610113e-03
+    View1:col_4    1.144026e-03
+    View1:col_15   2.849138e-03
+    View2:col_13   2.942331e-03
+    View2:col_5    2.020613e-04
+    View2:col_14  -1.353407e-03
+    View2:col_7   -1.180449e-04
+    View2:col_23  -1.507196e-03
+    View2:col_24   1.021233e-03
+    View3:col_2    4.059896e-03
+    View3:col_11   3.391348e-05
+    View4:col_16  -1.722174e-04
+    View4:col_22   6.123331e-04
+    View4:col_26   9.496521e-03
+    View5:col_3    1.240979e-03
+    View5:col_9    8.455665e-03
+    View5:col_21  -1.739921e-03
+    View5:col_25   1.098892e-02
+    View5:col_20  -1.811612e-03
+    View6:col_120  3.520871e-04
+    View6:col_123  .           
+    View6:col_124 -4.102933e-03
+    View6:col_127 -1.599949e-04
+    View6:col_62   4.523002e-02
+    View6:col_81  -2.943216e-03
+    View6:col_172  2.038653e-02
+    View6:col_173  3.958623e-02
+    View6:col_174  4.601980e-02
+    View6:col_175  5.447843e-02
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+#' #### Kpis
+cat(paste0("\n### Coop Learning Performance Metrics IV\n"))
+```
+
+</details>
+
+
+    ### Coop Learning Performance Metrics IV
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+knitr::kable(kpis, digits = 3)
+```
+
+</details>
+
+| Model               |  RMSE |   AUC | Lift_5 | Accuracy | Recall | Precision | Specificity | F1_Score |
+|:--------------------|------:|------:|-------:|---------:|-------:|----------:|------------:|---------:|
+| CoopLearn_r2_g6_p30 | 0.291 | 0.801 |  6.065 |     0.87 |  0.592 |     0.381 |       0.899 |    0.463 |
+
+# 4. Models Comparison
+
+<details>
+<summary>Show the code</summary>
+
+``` r
+knitr::kable(performance_models, digits = 3)
+```
+
+</details>
+
+| Model                     |  RMSE |       AUC | Lift_5 | Accuracy | Recall | Precision | Specificity | F1_Score |
+|:--------------------------|------:|----------:|-------:|---------:|-------:|----------:|------------:|---------:|
+| Log Reg                   | 0.259 | 0.8061880 |  6.301 |    0.864 |  0.598 |     0.367 |       0.892 |    0.455 |
+| Random Forest - ntree 500 | 0.262 | 0.7816235 |  6.124 |    0.862 |  0.586 |     0.360 |       0.891 |    0.446 |
+| CoopLearn_r0.5_g6_p30     | 0.286 | 0.8006627 |  6.212 |    0.871 |  0.588 |     0.384 |       0.901 |    0.464 |
+| CoopLearn_r0.7_g6_p30     | 0.288 | 0.8010624 |  6.212 |    0.871 |  0.591 |     0.384 |       0.901 |    0.466 |
+| CoopLearn_r1_g6_p30       | 0.289 | 0.8005158 |  6.124 |    0.871 |  0.591 |     0.383 |       0.900 |    0.465 |
+| CoopLearn_r2_g6_p30       | 0.291 | 0.8008139 |  6.065 |    0.870 |  0.592 |     0.381 |       0.899 |    0.463 |
