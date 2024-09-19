@@ -3,7 +3,7 @@
 
 Introduction
 --------
-This repository seeks to evaluate the method: Cooperative Learning for multiview data on a credit risk scoring data set, comparing it with traditional supervised learning methods.
+This repository seeks to evaluate the method: Cooperative Learning [Cooperative Learning Resources] for multiview data on a credit risk scoring data set, comparing it with traditional supervised learning methods.
 
 Cooperative learning combines the usual squared error loss of predictions with an ''agreement'' penalty to encourage the predictions from different data views to agree. The method can be especially powerful when the different data views share some underlying relationship in their signals that can be exploited to boost the signals.
 
