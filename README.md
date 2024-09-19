@@ -10,9 +10,10 @@ Cooperative learning combines the usual squared error loss of predictions with a
 Unlike traditional ensemble methods, where individual models work independently and their outputs are combined later, cooperative learning enables models to learn from each other iteratively. This collaborative interaction allows the models to correct each other's weaknesses, resulting in more accurate and generalized predictions.
 
 
-![Figure02](https://tibshirani.su.domains/multiview/files/image/early_late.png)
+
 
 ![Figure01](results/figures/early_late.png)
+*https://tibshirani.su.domains/multiview/files/image/early_late.png*
 
 
 Folder Structure

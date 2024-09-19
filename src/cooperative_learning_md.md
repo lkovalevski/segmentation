@@ -1272,30 +1272,15 @@ performance_rf <- calculate_metrics(
 <summary>Show the code</summary>
 
 ``` r
-cat(paste0("\n\n"))
+cat(paste0("\n\n### Random Forest Performance Metrics\n\n"))
 ```
 
 </details>
-<details>
-<summary>Show the code</summary>
 
-``` r
-cat(paste0("\n### Random Forest Performance Metrics\n"))
-```
-
-</details>
 
 
     ### Random Forest Performance Metrics
 
-<details>
-<summary>Show the code</summary>
-
-``` r
-cat(paste0("\n\n"))
-```
-
-</details>
 <details>
 <summary>Show the code</summary>
 
