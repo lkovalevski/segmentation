@@ -1125,140 +1125,17 @@ A stepwise logistic regression is fitted.
 
 ``` r
 #' Full model
-rl_full <- glm(model_formula, family = binomial(link = 'logit'), data = df_train, control = glm.control(epsilon = 1e-8, maxit = 50))
-```
+rl_full <- suppressWarnings(glm(model_formula, family = binomial(link = 'logit'), data = df_train))
 
-</details>
-
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-
-<details>
-<summary>Show the code</summary>
-
-``` r
 #' Model with only the intercept
-rl_intercepto <- glm(response ~ 1, family = binomial(link = 'logit'), data = df_train, control = glm.control(epsilon = 1e-8, maxit = 50))
+rl_intercepto <- suppressWarnings(glm(response ~ 1, family = binomial(link = 'logit'), data = df_train))
 
-fit_rl <- step(
+fit_rl <- suppressWarnings(step(
   rl_intercepto, 
   scope = list(lower = rl_intercepto, upper = rl_full), 
   direction = "both",
   trace = 0
-) 
-```
-
-</details>
-
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-    Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-
-<details>
-<summary>Show the code</summary>
-
-``` r
+) )
 cat(paste0("\n### Stepwise Logistic Regression Coefficients.\n"))
 ```
 
@@ -1395,7 +1272,7 @@ performance_rf <- calculate_metrics(
 <summary>Show the code</summary>
 
 ``` r
-cat(paste0("\n"))
+cat(paste0("\n\n"))
 ```
 
 </details>
@@ -1415,7 +1292,7 @@ cat(paste0("\n### Random Forest Performance Metrics\n"))
 <summary>Show the code</summary>
 
 ``` r
-cat(paste0("\n"))
+cat(paste0("\n\n"))
 ```
 
 </details>
