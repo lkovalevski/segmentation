@@ -3,7 +3,7 @@
 
 Introduction
 --------
-This repository seeks to evaluate the method: Cooperative Learning [Cooperative Learning Resources] for multiview data on a credit risk scoring data set, comparing it with traditional supervised learning methods.
+This repository seeks to evaluate the method: [Cooperative Learning] for multiview data on a credit risk scoring data set, comparing it with traditional supervised learning methods.
 
 Cooperative learning combines the usual squared error loss of predictions with an ''agreement'' penalty to encourage the predictions from different data views to agree. The method can be especially powerful when the different data views share some underlying relationship in their signals that can be exploited to boost the signals.
 
@@ -30,10 +30,10 @@ The project is organized into the following folders:
     |- README.md                   # folder description
     
     
-    
-    
-[Cooperative Learning Resources]: https://tibshirani.su.domains/multiview/CoopLearning.html
+References
+--------
+- [Cooperative learning for multi-view analysis](https://arxiv.org/abs/2112.12337). Ding, Daisy Yi, Shuangning Li, Balasubramanian Narasimhan, and Robert Tibshirani. PNAS, September 12, 2022. 119 (38) e2202113119
 
-
+[Cooperative Learning]: https://tibshirani.su.domains/multiview/CoopLearning.html
 
 
