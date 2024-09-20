@@ -28,7 +28,7 @@ Executive summary of the analysis
 - The best performance of Cooperative Learning models was using a value of $\rho$ equal to 0.7, but Stepwise Logistic Regression outperformed all models on RMSE, AUC, and Lift 5%. 
 
 
-The complete analysis can be found [here]:(src/cooperative_learning_md.md)
+The complete analysis can be found [here](src/cooperative_learning_md.md)
 
 
 Folder Structure
