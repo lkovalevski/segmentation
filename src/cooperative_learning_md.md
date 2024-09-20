@@ -1268,18 +1268,7 @@ performance_rf <- calculate_metrics(
 
     Setting direction: controls < cases
 
-<details>
-<summary>Show the code</summary>
-
-``` r
-cat(paste0("\n\n### Random Forest Performance Metrics\n\n"))
-```
-
-</details>
-
-
-
-    ### Random Forest Performance Metrics
+### Random Forest Performance Metrics
 
 <details>
 <summary>Show the code</summary>
@@ -1424,39 +1413,17 @@ if (!file.exists(file.path(models_path, model_name, "predictions.csv"))) {
   )
   
 }
+```
 
-#' #### Model: **`r paste0(model_name)`**.
+</details>
 
+#### Cooperative Learning ($\rho$ = 0.5) Coefficients
 
+<details>
+<summary>Show the code</summary>
+
+``` r
 #' #### Adjusted coefficients
-cat(paste0("\n"))
-```
-
-</details>
-<details>
-<summary>Show the code</summary>
-
-``` r
-cat(paste0("\n### Coefficients by view\n"))
-```
-
-</details>
-
-
-    ### Coefficients by view
-
-<details>
-<summary>Show the code</summary>
-
-``` r
-cat(paste0("\n"))
-```
-
-</details>
-<details>
-<summary>Show the code</summary>
-
-``` r
 coef(fit_coop, s = "lambda.min")
 ```
 
@@ -1496,96 +1463,13 @@ coef(fit_coop, s = "lambda.min")
     View6:col_174  0.1568649608
     View6:col_175  0.1879236273
 
+#### Cooperative Learning ($\rho$ = 0.5) Performance Metrics
+
 <details>
 <summary>Show the code</summary>
 
 ``` r
 #' #### Kpis
-cat(paste0("\n"))
-```
-
-</details>
-<details>
-<summary>Show the code</summary>
-
-``` r
-cat(paste0("\n### Coop Learning Performance Metrics - $$\rho$$ = 0.5\n"))
-```
-
-</details>
-
-
-    ### Coop Learning Performance Metrics - $$
-    ho$$ = 0.5
-
-<details>
-<summary>Show the code</summary>
-
-``` r
-cat(paste0("\n"))
-```
-
-</details>
-<details>
-<summary>Show the code</summary>
-
-``` r
-cat(paste0("\n"))
-```
-
-</details>
-<details>
-<summary>Show the code</summary>
-
-``` r
-cat(paste0("\n### Coop Learning Performance Metrics - $$\\rho$$ = 0.5\n"))
-```
-
-</details>
-
-
-    ### Coop Learning Performance Metrics - $$\rho$$ = 0.5
-
-<details>
-<summary>Show the code</summary>
-
-``` r
-cat(paste0("\n"))
-```
-
-</details>
-<details>
-<summary>Show the code</summary>
-
-``` r
-cat(paste0("\n"))
-```
-
-</details>
-<details>
-<summary>Show the code</summary>
-
-``` r
-cat(paste0("\n### Coop Learning Performance Metrics - $\\rho$ = 0.5\n"))
-```
-
-</details>
-
-
-    ### Coop Learning Performance Metrics - $\rho$ = 0.5
-
-<details>
-<summary>Show the code</summary>
-
-``` r
-cat(paste0("\n"))
-```
-
-</details>
-<details>
-<summary>Show the code</summary>
-
-``` r
 knitr::kable(kpis, digits = 3)
 ```
 
@@ -1595,16 +1479,12 @@ knitr::kable(kpis, digits = 3)
 |:----------------------|------:|------:|-------:|---------:|-------:|----------:|------------:|---------:|
 | CoopLearn_r0.5_g6_p30 | 0.286 | 0.801 |  6.212 |    0.871 |  0.588 |     0.384 |       0.901 |    0.464 |
 
+### 3.4.2 Cooperative Learning with penalty parameter ($\rho$) equal to 0.7
+
 <details>
 <summary>Show the code</summary>
 
 ``` r
-#'
-#'
-#' ## CoopLearning - Model 1 rho = 0.7
-#' 
-#' 
-
 #' Create a folder for the model
 rho        <- 0.7
 n_groups   <- length(unique(groups$prefix))
@@ -1682,9 +1562,16 @@ if (!file.exists(file.path(models_path, model_name, "predictions.csv"))) {
     kpis
   )
 }
+```
 
+</details>
 
+#### Cooperative Learning ($\rho$ = 0.7) Coefficients
 
+<details>
+<summary>Show the code</summary>
+
+``` r
 #' #### Adjusted coefficients
 coef(fit_coop, s = "lambda.min")
 ```
@@ -1725,39 +1612,13 @@ coef(fit_coop, s = "lambda.min")
     View6:col_174  1.196430e-01
     View6:col_175  1.426151e-01
 
+#### Cooperative Learning ($\rho$ = 0.7) Performance Metrics
+
 <details>
 <summary>Show the code</summary>
 
 ``` r
 #' #### Kpis
-cat(paste0("\n"))
-```
-
-</details>
-<details>
-<summary>Show the code</summary>
-
-``` r
-cat(paste0("\n### Coop Learning Performance Metrics II\n"))
-```
-
-</details>
-
-
-    ### Coop Learning Performance Metrics II
-
-<details>
-<summary>Show the code</summary>
-
-``` r
-cat(paste0("\n"))
-```
-
-</details>
-<details>
-<summary>Show the code</summary>
-
-``` r
 knitr::kable(kpis, digits = 3)
 ```
 
@@ -1767,16 +1628,12 @@ knitr::kable(kpis, digits = 3)
 |:----------------------|------:|------:|-------:|---------:|-------:|----------:|------------:|---------:|
 | CoopLearn_r0.7_g6_p30 | 0.288 | 0.801 |  6.212 |    0.871 |  0.591 |     0.384 |       0.901 |    0.466 |
 
+### 3.4.3 Cooperative Learning with penalty parameter ($\rho$) equal to 1
+
 <details>
 <summary>Show the code</summary>
 
 ``` r
-#'
-#'
-#' ## CoopLearning - Model 1 rho = 1
-#' 
-#' 
-
 #' Create a folder for the model
 rho        <- 1
 n_groups   <- length(unique(groups$prefix))
@@ -1854,10 +1711,16 @@ performance_models <- rbind(
   kpis
 )
 }
+```
 
-#' #### Model: **`r paste0(model_name)`**.
+</details>
 
+#### Cooperative Learning ($\rho$ = 1) Coefficients
 
+<details>
+<summary>Show the code</summary>
+
+``` r
 #' #### Adjusted coefficients
 coef(fit_coop, s = "lambda.min")
 ```
@@ -1898,23 +1761,13 @@ coef(fit_coop, s = "lambda.min")
     View6:col_174  8.779214e-02
     View6:col_175  1.042673e-01
 
+#### Cooperative Learning ($\rho$ = 1) Performance Metrics
+
 <details>
 <summary>Show the code</summary>
 
 ``` r
 #' #### Kpis
-cat(paste0("\n### Coop Learning Performance Metrics III\n"))
-```
-
-</details>
-
-
-    ### Coop Learning Performance Metrics III
-
-<details>
-<summary>Show the code</summary>
-
-``` r
 knitr::kable(kpis, digits = 3)
 ```
 
@@ -1924,16 +1777,12 @@ knitr::kable(kpis, digits = 3)
 |:--------------------|------:|------:|-------:|---------:|-------:|----------:|------------:|---------:|
 | CoopLearn_r1_g6_p30 | 0.289 | 0.801 |  6.124 |    0.871 |  0.591 |     0.383 |         0.9 |    0.465 |
 
+### 3.4.4 Cooperative Learning with penalty parameter ($\rho$) equal to 2
+
 <details>
 <summary>Show the code</summary>
 
 ``` r
-#'
-#'
-#' ## CoopLearning - Model 1 rho = 2
-#' 
-#' 
-
 #' Create a folder for the model
 rho        <- 2
 n_groups   <- length(unique(groups$prefix))
@@ -2010,7 +1859,16 @@ if (!file.exists(file.path(models_path, model_name, "predictions.csv"))) {
     kpis
   )
 }
+```
 
+</details>
+
+#### Cooperative Learning ($\rho$ = 2) Coefficients
+
+<details>
+<summary>Show the code</summary>
+
+``` r
 #' #### Adjusted coefficients
 coef(fit_coop, s = "lambda.min")
 ```
@@ -2051,23 +1909,13 @@ coef(fit_coop, s = "lambda.min")
     View6:col_174  4.601980e-02
     View6:col_175  5.447843e-02
 
+#### Cooperative Learning ($\rho$ = 2) Performance Metrics
+
 <details>
 <summary>Show the code</summary>
 
 ``` r
 #' #### Kpis
-cat(paste0("\n### Coop Learning Performance Metrics IV\n"))
-```
-
-</details>
-
-
-    ### Coop Learning Performance Metrics IV
-
-<details>
-<summary>Show the code</summary>
-
-``` r
 knitr::kable(kpis, digits = 3)
 ```
 
