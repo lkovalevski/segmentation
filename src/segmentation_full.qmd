@@ -1,0 +1,201 @@
+---
+title: "Segmentation example with Credit Risk Data"
+author: "Leandro Kovalevski"
+toc: true
+number-sections: true
+toc-depth: 2
+format:
+  html:
+    code-fold: true
+    code-summary: "Show the code"
+theme:
+  light: zephyr
+  dark: cyborg
+---
+
+# Segmentation example {-}
+
+# Settings{-}
+
+
+```{python}
+# Imports
+import pandas as pd
+import numpy as np
+from pathlib import Path
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import make_pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler
+from sklearn.feature_selection import SelectFromModel
+from sklearn.metrics import roc_auc_score
+from scipy.cluster.hierarchy import linkage, fcluster
+import warnings
+warnings.filterwarnings('ignore')
+```
+
+```{python}
+# Setup
+ROOT = Path.cwd().parent
+DATA_READY_DIR = ROOT / "data" / "ready"
+REPORTS_DIR = ROOT / "results" / "reports"
+
+DATA_FILE = DATA_READY_DIR / "df_bcra_ready.csv"
+df = pd.read_csv(DATA_FILE, sep=';', decimal=',')
+df = df[df["col_3"] <= 600].copy()
+df = df.drop(columns=["col_18", "col_19"])
+
+amt_vars = ["col_4", "col_5", "col_11", "col_12", "col_13", "col_14", "col_15", "col_16"]
+for var in amt_vars:
+    df[f"{var}_log"] = np.log1p(df[var])
+```
+
+```{python}
+# Configurations
+model_dict = {
+    "logit": LogisticRegression(max_iter=1000),
+    "rf": RandomForestClassifier(random_state=42),
+    "gb": GradientBoostingClassifier(random_state=42),
+    "nn": MLPClassifier(max_iter=500, random_state=42)
+}
+
+param_grids = {
+    "rf": {"n_estimators": [50, 100, 200], "max_depth": [3, 5]},
+    "gb": {"n_estimators": [50, 100, 200], "learning_rate": [0.1, 0.05]}
+}
+```
+
+```{python}
+# Run experiment
+results = []
+
+for test_size in [0.05, 0.15, 0.30]:
+    for model_name, model in model_dict.items():
+        for n_clusters in range(1, 7):
+            print(f"\n▶ Method: {model_name}, Test: {int(test_size*100)}%, Clusters: {n_clusters}")
+
+            df_run = df.copy()
+            cluster_ids = None
+            
+            if n_clusters > 1:
+                scaler = StandardScaler()
+                X_cluster = scaler.fit_transform(df_run[["col_3", "col_4_log"]].dropna())
+                linkage_matrix = linkage(X_cluster, method="ward")
+                cluster_ids = fcluster(linkage_matrix, n_clusters, criterion="maxclust")
+                df_run.loc[df_run[["col_3", "col_4_log"]].dropna().index, "cluster"] = cluster_ids
+            else:
+                df_run["cluster"] = 1
+
+            X = df_run.drop(columns=["id", "response"])
+            y = df_run["response"]
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+
+            df_train = X_train.copy()
+            df_train["response"] = y_train
+            df_train["cluster"] = df_run.loc[df_train.index, "cluster"]
+            
+            df_test = X_test.copy()
+            df_test["response"] = y_test
+            df_test["cluster"] = df_run.loc[df_test.index, "cluster"]
+
+            full_y_test, full_pred = [], []
+            segment_aucs = []
+
+            for cid in sorted(df_run["cluster"].dropna().unique()):
+                train_seg = df_train[df_train["cluster"] == cid]
+                test_seg = df_test[df_test["cluster"] == cid]
+
+                features = train_seg.drop(columns=["response", "cluster"]).columns
+                X_train_s, y_train_s = train_seg[features], train_seg["response"]
+                X_test_s, y_test_s = test_seg[features], test_seg["response"]
+
+                pipe = make_pipeline(SimpleImputer())
+
+                if model_name == "logit":
+                    lasso = LogisticRegressionCV(cv=5, penalty='l1', solver='saga', max_iter=1000)
+                    selector = SelectFromModel(lasso, prefit=False, max_features=20)
+                    pipe.steps.append(("selector", selector))
+
+                if model_name in param_grids:
+                    grid = GridSearchCV(model, param_grids[model_name], cv=3)
+                    pipe.steps.append(("model", grid))
+                else:
+                    pipe.steps.append(("model", model))
+
+                pipe.fit(X_train_s, y_train_s)
+                y_pred = pipe.predict_proba(X_test_s)[:, 1]
+                full_y_test.extend(y_test_s)
+                full_pred.extend(y_pred)
+                auc = roc_auc_score(y_test_s, y_pred)
+                segment_aucs.append((cid, auc))
+
+            weighted_auc = roc_auc_score(full_y_test, full_pred)
+            results.append({
+                "method": model_name,
+                "test_size": test_size,
+                "n_clusters": n_clusters,
+                "weighted_auc": weighted_auc,
+                "segments": segment_aucs
+            })
+```
+
+
+```{python}
+# Save results
+final = pd.DataFrame(results)
+filename = f"results_{len(model_dict)}methods_{3}samples_6clusters.csv"
+final.to_csv(REPORTS_DIR / filename, index=False)
+```
+
+
+```{python}
+# Re-import required libraries after kernel reset
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from pathlib import Path
+
+# Re-set the report path
+REPORTS_DIR = Path.cwd().parent / "results" / "reports"
+
+# Load the results CSV
+results_path = REPORTS_DIR / "results_4methods_3samples_6clusters.csv"
+df_results = pd.read_csv(results_path)
+
+
+# Create the binary column 'segmented' 
+df_results["segmented"] = df_results["n_clusters"].apply(lambda x: 1 if x > 1 else 0)
+
+# Clean formatting
+df_results["method"] = df_results["method"].str.upper()
+df_results["segmented"] = df_results["segmented"].map({0: "No", 1: "Yes"})
+
+# Plot
+plt.figure(figsize=(14, 8))
+sns.set(style="whitegrid")
+
+sns.stripplot(
+    data=df_results,
+    x="method",
+    y="weighted_auc",
+    hue="segmented",
+    dodge=True,
+    jitter=True,
+    alpha=0.7,
+    palette="Set1"
+)
+
+plt.title("Comparación de AUC por Método y Segmentación")
+plt.ylabel("AUC ponderado")
+plt.xlabel("Método de Modelado")
+plt.legend(title="¿Segmentado?")
+plt.ylim(0.5, 1.0)
+plt.tight_layout()
+plt.show()
+
+```
+
+
