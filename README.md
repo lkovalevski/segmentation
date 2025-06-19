@@ -31,4 +31,3 @@ The project is organized into the following folders:
 References
 --------
 - 
-
