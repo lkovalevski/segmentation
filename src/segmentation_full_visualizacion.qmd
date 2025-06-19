@@ -1,0 +1,207 @@
+---
+title: "Segmentation example with Credit Risk Data"
+author: "Leandro Kovalevski"
+toc: true
+number-sections: true
+toc-depth: 2
+format:
+  html:
+    code-fold: true
+    code-summary: "Show the code"
+theme:
+  light: zephyr
+  dark: cyborg
+---
+
+# Comparación de todos los escenarios {-}
+
+
+```{python}
+# Re-import required libraries after kernel reset
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from pathlib import Path
+
+# Re-set the report path
+REPORTS_DIR = Path.cwd().parent / "results" / "reports"
+
+# Load the results CSV
+results_path = REPORTS_DIR / "results_4methods_3samples_6clusters.csv"
+df_results = pd.read_csv(results_path)
+
+
+# Crear la columna 'segmented' según la cantidad de clusters
+df_results["segmented"] = df_results["n_clusters"].apply(lambda x: 1 if x > 1 else 0)
+
+# Clean formatting
+df_results["method"] = df_results["method"].str.upper()
+df_results["segmented"] = df_results["segmented"].map({0: "No", 1: "Yes"})
+
+# Plot
+plt.figure(figsize=(8, 6))
+sns.set(style="whitegrid")
+
+sns.stripplot(
+    data=df_results,
+    x="method",
+    y="weighted_auc",
+    hue="segmented",
+    dodge=True,
+    jitter=True,
+    alpha=0.7,
+    palette="Set1"
+)
+
+plt.title("Comparación de AUC por Método y Segmentación")
+plt.ylabel("AUC ponderado")
+plt.xlabel("Método de Modelado")
+plt.legend(title="¿Segmentado?")
+plt.ylim(0.6, 0.9)
+plt.tight_layout()
+plt.show()
+
+
+```
+
+
+
+# Parte 2: 4 gráficos por método para comparar clusters vs test_size
+
+
+# Comparación de todos los escenarios {-}
+
+
+```{python}
+
+# Asegurar estilo visual
+sns.set(style="whitegrid")
+
+# Crear grid por método
+g = sns.FacetGrid(
+    df_results,
+    col="method",
+    col_wrap=2,
+    height=2.5,
+    aspect=1.2,
+    sharey=True
+)
+
+# Agregar líneas y puntos conectando los AUC por cantidad de clusters para cada test_size
+def plot_lines(data, **kwargs):
+    sns.lineplot(
+        data=data,
+        x="n_clusters",
+        y="weighted_auc",
+        hue="test_size",
+        marker="o",
+        palette="Set2",
+        linewidth=2,
+        **kwargs
+    )
+
+g.map_dataframe(plot_lines)
+
+# Ajustes de etiquetas y escalas
+g.set(ylim=(0.6, 0.9))
+g.set_axis_labels("Cantidad de Clusters", "AUC ponderado")
+g.set_titles("Método: {col_name}")
+g.add_legend(title="Tamaño test (%)")
+
+plt.tight_layout()
+```
+
+
+```{python}
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import ast
+
+# Cargar resultados
+df = df_results.copy()
+
+# Filtrar para test_size == 0.05
+df_plot = df_results[df_results["test_size"] == 0.05].copy()
+
+# Convertir la columna 'segments' de string a lista de tuplas
+df_plot["segments"] = df_plot["segments"].apply(ast.literal_eval)
+
+# Separar sin segmentar (n_clusters == 1) y con segmentación
+df_base_auc = df_plot[df_plot["n_clusters"] == 1][["method", "weighted_auc"]].set_index("method")["weighted_auc"]
+
+# Expandir segmentos en un nuevo DataFrame
+rows = []
+for _, row in df_plot.iterrows():
+    method = row["method"]
+    n_clusters = int(row["n_clusters"])
+    for seg_id, auc in row["segments"]:
+        rows.append({
+            "method": method,
+            "n_clusters": n_clusters,
+            "segment_id": int(seg_id),
+            "auc": auc
+        })
+
+df_segments = pd.DataFrame(rows)
+
+# Agregar columna con el AUC base (sin segmentar)
+df_segments["auc_base"] = df_segments["method"].map(df_base_auc)
+
+# Determinar si supera el AUC base
+df_segments["color"] = df_segments["auc"] > df_segments["auc_base"]
+
+# Graficar: uno debajo del otro
+sns.set(style="whitegrid")
+g = sns.FacetGrid(
+    df_segments,
+    col="method",
+    col_wrap=1,
+    height=4,
+    aspect=2,
+    sharey=True
+)
+
+def plot_segments(data, color, **kwargs):
+    # Graficar línea de base
+    base_auc = data["auc_base"].iloc[0]
+    plt.axhline(base_auc, color="gray", linestyle="dotted", label=f"AUC sin segmentar: {base_auc:.3f}")
+    plt.text(
+        data["n_clusters"].min() - 0.3,
+        base_auc + 0.005,
+        f"{base_auc:.3f}",
+        va="bottom",
+        ha="left",
+        fontsize=9,
+        color="gray"
+    )
+    
+    # Puntos por color
+    above = data[data["color"]]
+    below = data[~data["color"]]
+    
+    plt.scatter(above["n_clusters"], above["auc"], color="green", label="AUC > sin segmentar")
+    plt.scatter(below["n_clusters"], below["auc"], color="red", label="AUC ≤ sin segmentar")
+    
+    # Trazar máximo AUC por cantidad de clusters
+    max_auc = data.groupby("n_clusters")["auc"].max().reset_index()
+    for _, row in max_auc.iterrows():
+        plt.text(
+            row["n_clusters"],
+            row["auc"] + 0.005,
+            f"{row['auc']:.3f}",
+            ha="center",
+            fontsize=8,
+            color="black"
+        )
+
+g.map_dataframe(plot_segments)
+
+g.set_axis_labels("Cantidad de Clusters", "AUC por Segmento")
+g.set_titles("Método: {col_name}")
+g.set(ylim=(0.55, 0.95))
+
+plt.tight_layout()
+plt.show()
+
+```
