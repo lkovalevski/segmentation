@@ -1,13 +1,14 @@
 ---
 title: "Segmentation example with Credit Risk Data"
 author: "Leandro Kovalevski"
-toc: true
-number-sections: true
-toc-depth: 2
 format:
-  html:
+  gfm:
+    toc: true
+    number-sections: true
+    toc-depth: 2
     code-fold: true
     code-summary: "Show the code"
+    highlight-style: github
 theme:
   light: zephyr
   dark: cyborg
