@@ -16,13 +16,19 @@ The binary response variable indicates whether the CUIT experienced a severe cre
 
 🔍 Executive summary
 --------
-All modeling approaches showed improved weighted AUC when using segmentation and fitting separate models per group.
+- Segmentation could improve performance metrics. Fitting a separate model for each segment showed improved weighted AUC for all modeling approaches.
 
-The improvement was most noticeable with logistic regression, likely due to its more limited capacity to model complex patterns globally.
+- The improvement was most noticeable with logistic regression, likely due to its more limited capacity to model complex patterns globally.
 
-A smaller test set (i.e., larger training set) consistently led to higher AUCs across all methods.
+- A smaller test set (i.e., larger training set) consistently led to higher AUCs across all methods.
 
-For test_size = 5%, segments almost always showed both higher and lower AUCs than the non-segmented model, highlighting substantial heterogeneity across subgroups.
+- Segments showed both higher and lower AUCs than the non-segmented model, highlighting substantial performance heterogeneity across subgroups.
+
+![Figure01](results/figures/graph01.png)
+
+![Figure02](results/figures/graph02.png)
+
+![Figure03](results/figures/graph03.png)
 
 
 Folder Structure
