@@ -24,11 +24,15 @@ The binary response variable indicates whether the CUIT experienced a severe cre
 
 - Segments showed both higher and lower AUCs than the non-segmented model, highlighting substantial performance heterogeneity across subgroups.
 
-![Figure01](results/figures/graph01.png)
 
-![Figure02](results/figures/graph02.png)
+![Figure01](results/figures/graph01.PNG)
 
-![Figure03](results/figures/graph03.png)
+
+![Figure02](results/figures/graph02.PNG)
+
+
+![Figure03](results/figures/graph03.PNG)
+
 
 
 Folder Structure
